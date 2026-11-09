@@ -1,5 +1,7 @@
 # StemKit
 
+*[Leia em português](README.pt-BR.md)*
+
 Split any YouTube song into isolated stems — **vocals, drums, bass, guitar, piano** and more — right on your machine.
 
 Search YouTube or paste a link, pick the instruments you want, and play the result like a mini DAW: the video on one side, every stem on its own fader, all perfectly in sync. Karaoke, acapellas and instrumentals are one click away.
