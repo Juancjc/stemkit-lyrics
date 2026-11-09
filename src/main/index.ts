@@ -39,6 +39,8 @@ import { initUpdater } from './updater'
 import { runSmoke } from './smoke'
 import { getThumb, clearThumbMemo } from './thumbs'
 import { maybePing } from './telemetry'
+import { loadLyrics, saveLyrics, clearLyrics, searchLyrics } from './lyrics'
+import type { LyricsTrack } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
 let staticServer: Server | null = null
@@ -325,6 +327,10 @@ app.whenReady().then(async () => {
   })
 
   ipcMain.handle('search:youtube', (_e, query: string) => searchYouTube(query))
+  ipcMain.handle('lyrics:get', (_e, videoId: string) => loadLyrics(videoId))
+  ipcMain.handle('lyrics:search', (_e, query: string) => searchLyrics(query))
+  ipcMain.handle('lyrics:set', (_e, videoId: string, track: LyricsTrack) => saveLyrics(videoId, track))
+  ipcMain.handle('lyrics:clear', (_e, videoId: string) => clearLyrics(videoId))
   ipcMain.handle('app:version', () => app.getVersion())
   ipcMain.handle('settings:get', () => loadSettings())
   ipcMain.handle('settings:set', (_e, patch: Partial<AppSettings>) => {

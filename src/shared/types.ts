@@ -115,6 +115,24 @@ export interface SearchResult {
   duration?: number
 }
 
+// one candidate returned by LRCLIB's search endpoint
+export interface LyricsTrack {
+  id: number
+  trackName: string
+  artistName: string
+  albumName: string
+  duration: number
+  instrumental: boolean
+  plainLyrics: string | null
+  syncedLyrics: string | null
+}
+
+// a LyricsTrack the user picked (or that was matched automatically),
+// cached to songDir(videoId)/lyrics.json
+export interface CachedLyrics extends LyricsTrack {
+  source: 'lrclib'
+}
+
 export interface UpdateEvent {
   status: 'checking' | 'available' | 'none' | 'progress' | 'downloaded' | 'error'
   version?: string
@@ -134,6 +152,10 @@ export interface StemKitApi {
   exportStem(videoId: string, stem: string): Promise<{ saved: boolean; path?: string }>
   exportAllStems(videoId: string): Promise<{ saved: boolean; path?: string; count?: number }>
   searchYouTube(query: string): Promise<SearchResult[]>
+  getLyrics(videoId: string): Promise<CachedLyrics | null>
+  searchLyrics(query: string): Promise<LyricsTrack[]>
+  setLyrics(videoId: string, track: LyricsTrack): Promise<CachedLyrics>
+  clearLyrics(videoId: string): Promise<void>
   startJob(url: string, model?: string, stems?: string[]): Promise<{ started: boolean }>
   pickAudioFile(): Promise<string | null>
   pickFolder(): Promise<string | null>

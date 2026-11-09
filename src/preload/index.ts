@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
-import type { JobEvent, EnvEvent, UpdateEvent, AppSettings, StemKitApi } from '../shared/types'
+import type { JobEvent, EnvEvent, UpdateEvent, AppSettings, StemKitApi, LyricsTrack } from '../shared/types'
 
 function subscribe<T>(channel: string, cb: (data: T) => void): () => void {
   const handler = (_e: IpcRendererEvent, data: T): void => cb(data)
@@ -22,6 +22,10 @@ const api: StemKitApi = {
   exportStem: (videoId, stem) => ipcRenderer.invoke('stem:export', videoId, stem),
   exportAllStems: (videoId) => ipcRenderer.invoke('stems:export-all', videoId),
   searchYouTube: (query) => ipcRenderer.invoke('search:youtube', query),
+  getLyrics: (videoId) => ipcRenderer.invoke('lyrics:get', videoId),
+  searchLyrics: (query) => ipcRenderer.invoke('lyrics:search', query),
+  setLyrics: (videoId, track: LyricsTrack) => ipcRenderer.invoke('lyrics:set', videoId, track),
+  clearLyrics: (videoId) => ipcRenderer.invoke('lyrics:clear', videoId),
   startJob: (url, model, stems) => ipcRenderer.invoke('jobs:start', url, model, stems),
   pickAudioFile: () => ipcRenderer.invoke('files:pick-audio'),
   pickFolder: () => ipcRenderer.invoke('files:pick-folder'),

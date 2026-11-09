@@ -8,6 +8,7 @@ import { YouTubeHost, type YTState } from '../lib/youtube'
 import { StemLane } from './StemLane'
 import { Transport, type PresetId } from './Transport'
 import { DownloadIcon } from './Icons'
+import { Lyrics } from './Lyrics'
 
 // number keys 1-6 mute the lane shown in that position, top to bottom
 const STEM_KEYS = ['1', '2', '3', '4', '5', '6']
@@ -88,6 +89,7 @@ export function Player({ song, settings }: Props): React.ReactElement {
   const [solos, setSolos] = useState<Set<StemId>>(new Set())
   const [master, setMaster] = useState(0.9)
   const [preset, setPreset] = useState<PresetId | 'custom'>('all')
+  const [showLyrics, setShowLyrics] = useState(false)
 
   const stemMeta = useMemo(() => buildStemMeta(Object.keys(buffers) as StemId[]), [buffers])
 
@@ -404,6 +406,14 @@ export function Player({ song, settings }: Props): React.ReactElement {
     <div className="h-full flex flex-col">
       <header className="drag-region h-14 shrink-0 flex items-center justify-between px-6">
         <h2 className="text-sm font-semibold truncate">{song.title}</h2>
+        <button
+          onClick={() => setShowLyrics((v) => !v)}
+          className={`no-drag shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-colors ${
+            showLyrics ? 'bg-white/10 text-white' : 'text-white/45 hover:text-white hover:bg-white/10'
+          }`}
+        >
+          Lyrics
+        </button>
       </header>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
@@ -484,6 +494,17 @@ export function Player({ song, settings }: Props): React.ReactElement {
               </div>
             </aside>
           </div>
+
+          {showLyrics && (
+            <div className="mt-4">
+              <Lyrics
+                videoId={song.videoId}
+                title={song.title}
+                getPosition={getPosition}
+                onSeek={seekTo}
+              />
+            </div>
+          )}
 
           <Transport
             playing={playing}
