@@ -2,17 +2,19 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CachedLyrics, LyricsTrack } from '../../../shared/types'
 import { parseLrc, activeLrcIndex } from '../lib/lrc'
 import { fmtTime } from '../lib/format'
+import { ExpandIcon } from './Icons'
 
 interface Props {
   videoId: string
   title: string
   getPosition: () => number
   onSeek: (seconds: number) => void
+  onOpenTheater: () => void
 }
 
 type Status = 'loading' | 'found' | 'not-found' | 'error'
 
-export function Lyrics({ videoId, title, getPosition, onSeek }: Props): React.ReactElement {
+export function Lyrics({ videoId, title, getPosition, onSeek, onOpenTheater }: Props): React.ReactElement {
   const [status, setStatus] = useState<Status>('loading')
   const [cached, setCached] = useState<CachedLyrics | null>(null)
   const [query, setQuery] = useState(title)
@@ -105,14 +107,25 @@ export function Lyrics({ videoId, title, getPosition, onSeek }: Props): React.Re
         <span className="text-[11px] font-semibold uppercase tracking-widest text-white/30">
           Lyrics
         </span>
-        {status === 'found' && (
-          <button
-            onClick={() => void forget()}
-            className="no-drag text-[11px] text-white/35 hover:text-white/70 transition-colors"
-          >
-            Search again
-          </button>
-        )}
+        <span className="flex items-center gap-2">
+          {status === 'found' && lines.length > 0 && (
+            <button
+              onClick={onOpenTheater}
+              title="Open Theater Mode"
+              className="no-drag w-6 h-6 rounded-md hover:bg-white/10 text-white/40 hover:text-white flex items-center justify-center transition-colors"
+            >
+              <ExpandIcon className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {status === 'found' && (
+            <button
+              onClick={() => void forget()}
+              className="no-drag text-[11px] text-white/35 hover:text-white/70 transition-colors"
+            >
+              Search again
+            </button>
+          )}
+        </span>
       </div>
 
       {status === 'loading' && (

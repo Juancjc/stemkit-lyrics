@@ -9,6 +9,7 @@ import { StemLane } from './StemLane'
 import { Transport, type PresetId } from './Transport'
 import { DownloadIcon } from './Icons'
 import { Lyrics } from './Lyrics'
+import { TheaterMode } from './TheaterMode'
 
 // number keys 1-6 mute the lane shown in that position, top to bottom
 const STEM_KEYS = ['1', '2', '3', '4', '5', '6']
@@ -90,6 +91,7 @@ export function Player({ song, settings }: Props): React.ReactElement {
   const [master, setMaster] = useState(0.9)
   const [preset, setPreset] = useState<PresetId | 'custom'>('all')
   const [showLyrics, setShowLyrics] = useState(false)
+  const [theaterOpen, setTheaterOpen] = useState(false)
 
   const stemMeta = useMemo(() => buildStemMeta(Object.keys(buffers) as StemId[]), [buffers])
 
@@ -502,6 +504,7 @@ export function Player({ song, settings }: Props): React.ReactElement {
                 title={song.title}
                 getPosition={getPosition}
                 onSeek={seekTo}
+                onOpenTheater={() => setTheaterOpen(true)}
               />
             </div>
           )}
@@ -552,6 +555,14 @@ export function Player({ song, settings }: Props): React.ReactElement {
           </div>
         </div>
       </div>
+
+      {theaterOpen && (
+        <TheaterMode
+          videoId={song.videoId}
+          getPosition={getPosition}
+          onClose={() => setTheaterOpen(false)}
+        />
+      )}
     </div>
   )
 }

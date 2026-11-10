@@ -136,6 +136,14 @@ export function XIcon({ className = base }: IconProps) {
   )
 }
 
+export function ExpandIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M9 3H3v6M15 21h6v-6M3 3l7 7M21 21l-7-7" />
+    </svg>
+  )
+}
+
 export function ExternalIcon({ className = base }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
