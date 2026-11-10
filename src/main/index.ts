@@ -40,6 +40,7 @@ import { runSmoke } from './smoke'
 import { getThumb, clearThumbMemo } from './thumbs'
 import { maybePing } from './telemetry'
 import { loadLyrics, saveLyrics, clearLyrics, searchLyrics } from './lyrics'
+import { loadBackground, pickBackground, clearBackground } from './background'
 import type { LyricsTrack } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
@@ -331,6 +332,9 @@ app.whenReady().then(async () => {
   ipcMain.handle('lyrics:search', (_e, query: string) => searchLyrics(query))
   ipcMain.handle('lyrics:set', (_e, videoId: string, track: LyricsTrack) => saveLyrics(videoId, track))
   ipcMain.handle('lyrics:clear', (_e, videoId: string) => clearLyrics(videoId))
+  ipcMain.handle('background:get', (_e, videoId: string) => loadBackground(videoId))
+  ipcMain.handle('background:pick', (_e, videoId: string) => pickBackground(videoId))
+  ipcMain.handle('background:clear', (_e, videoId: string) => clearBackground(videoId))
   ipcMain.handle('app:version', () => app.getVersion())
   ipcMain.handle('settings:get', () => loadSettings())
   ipcMain.handle('settings:set', (_e, patch: Partial<AppSettings>) => {
