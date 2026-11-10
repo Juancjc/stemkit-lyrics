@@ -133,6 +133,15 @@ export interface CachedLyrics extends LyricsTrack {
   source: 'lrclib'
 }
 
+export type BackgroundKind = 'image' | 'video'
+
+// a custom per-song background picked by the user, cached to
+// songDir(videoId)/background.json
+export interface SongBackground {
+  kind: BackgroundKind
+  path: string
+}
+
 export interface UpdateEvent {
   status: 'checking' | 'available' | 'none' | 'progress' | 'downloaded' | 'error'
   version?: string
@@ -156,6 +165,9 @@ export interface StemKitApi {
   searchLyrics(query: string): Promise<LyricsTrack[]>
   setLyrics(videoId: string, track: LyricsTrack): Promise<CachedLyrics>
   clearLyrics(videoId: string): Promise<void>
+  getBackground(videoId: string): Promise<SongBackground | null>
+  pickBackground(videoId: string): Promise<SongBackground | null>
+  clearBackground(videoId: string): Promise<void>
   startJob(url: string, model?: string, stems?: string[]): Promise<{ started: boolean }>
   pickAudioFile(): Promise<string | null>
   pickFolder(): Promise<string | null>
