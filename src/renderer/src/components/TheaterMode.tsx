@@ -3,6 +3,7 @@ import type { LrcLine } from '../lib/lrc'
 import { parseLrc, activeLrcIndex } from '../lib/lrc'
 import { FALLBACK_PALETTE, extractPalette } from '../lib/palette'
 import { XIcon } from './Icons'
+import type { SongBackground } from '../../../shared/types'
 
 interface Props {
   videoId: string
@@ -16,6 +17,8 @@ export function TheaterMode({ videoId, getPosition, onClose, showVideo }: Props)
   const [activeIndex, setActiveIndex] = useState(-1)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const paletteRef = useRef<string[]>(FALLBACK_PALETTE)
+  const [background, setBackground] = useState<SongBackground | null>(null)
+  const [bgFailed, setBgFailed] = useState(false)
 
   // Theater Mode fetches and parses its own copy of the cached synced
   // lyrics rather than receiving it from the Lyrics panel, so the two
@@ -47,6 +50,31 @@ export function TheaterMode({ videoId, getPosition, onClose, showVideo }: Props)
       cancelled = true
     }
   }, [videoId])
+
+  useEffect(() => {
+    let cancelled = false
+    setBackground(null)
+    setBgFailed(false)
+    window.stemkit.getBackground(videoId).then((bg) => {
+      if (!cancelled) setBackground(bg)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [videoId])
+
+  const pickBg = async (): Promise<void> => {
+    const picked = await window.stemkit.pickBackground(videoId)
+    if (picked) {
+      setBackground(picked)
+      setBgFailed(false)
+    }
+  }
+
+  const clearBg = async (): Promise<void> => {
+    await window.stemkit.clearBackground(videoId)
+    setBackground(null)
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -109,7 +137,28 @@ export function TheaterMode({ videoId, getPosition, onClose, showVideo }: Props)
 
   return (
     <div className="fixed inset-0 z-[60]">
-      {!showVideo && <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />}
+      {background && !bgFailed ? (
+        background.kind === 'video' ? (
+          <video
+            key={background.path}
+            src={`file://${background.path}`}
+            className="absolute inset-0 w-full h-full object-cover"
+            autoPlay
+            muted
+            loop
+            onError={() => setBgFailed(true)}
+          />
+        ) : (
+          <img
+            key={background.path}
+            src={`file://${background.path}`}
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={() => setBgFailed(true)}
+          />
+        )
+      ) : (
+        !showVideo && <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+      )}
       <div className="absolute inset-0 bg-black/30" />
       <div className="absolute inset-0 flex items-center justify-center px-16">
         <p
@@ -118,6 +167,22 @@ export function TheaterMode({ videoId, getPosition, onClose, showVideo }: Props)
         >
           {text}
         </p>
+      </div>
+      <div className="no-drag absolute bottom-6 left-6 flex items-center gap-2 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity">
+        <button
+          onClick={() => void pickBg()}
+          className="rounded-full bg-black/40 hover:bg-black/60 text-white/70 hover:text-white text-[11px] font-medium px-3 py-1.5 transition-colors"
+        >
+          {background ? 'Change background' : 'Set background'}
+        </button>
+        {background && (
+          <button
+            onClick={() => void clearBg()}
+            className="rounded-full bg-black/40 hover:bg-black/60 text-white/70 hover:text-white text-[11px] font-medium px-3 py-1.5 transition-colors"
+          >
+            Reset
+          </button>
+        )}
       </div>
       <button
         onClick={onClose}
