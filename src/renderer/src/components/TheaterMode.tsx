@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { LrcLine } from '../lib/lrc'
 import { parseLrc, activeLrcIndex } from '../lib/lrc'
-import { FALLBACK_PALETTE } from '../lib/palette'
+import { FALLBACK_PALETTE, extractPalette } from '../lib/palette'
 import { XIcon } from './Icons'
 
 interface Props {
@@ -27,6 +27,20 @@ export function TheaterMode({ videoId, getPosition, onClose }: Props): React.Rea
     window.stemkit.getLyrics(videoId).then((c) => {
       if (cancelled || !c?.syncedLyrics) return
       setLines(parseLrc(c.syncedLyrics))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [videoId])
+
+  useEffect(() => {
+    paletteRef.current = FALLBACK_PALETTE
+    let cancelled = false
+    window.stemkit.getThumb(videoId).then((thumb) => {
+      if (cancelled || !thumb) return
+      void extractPalette(videoId, thumb).then((colors) => {
+        if (!cancelled) paletteRef.current = colors
+      })
     })
     return () => {
       cancelled = true
