@@ -425,7 +425,14 @@ export function Player({ song, settings }: Props): React.ReactElement {
               <div className="relative w-[391px] shrink-0">
                 <div className="absolute -inset-4 bg-violet-500/10 blur-3xl rounded-full pointer-events-none" />
                 <div className="absolute inset-0 rounded-xl overflow-hidden ring-1 ring-white/10 bg-black shadow-2xl shadow-black/60">
-                  <div ref={containerRef} className="absolute inset-0 [&_iframe]:w-full [&_iframe]:h-full" />
+                  <div
+                    ref={containerRef}
+                    className={
+                      theaterOpen
+                        ? 'fixed inset-0 z-[55] [&_iframe]:w-full [&_iframe]:h-full'
+                        : 'absolute inset-0 [&_iframe]:w-full [&_iframe]:h-full'
+                    }
+                  />
                   {!ytReady && (
                     <div className="absolute inset-0 flex items-center justify-center animate-pulse">
                       <span className="text-[10px] text-white/40 tracking-widest uppercase">loading…</span>
@@ -561,6 +568,7 @@ export function Player({ song, settings }: Props): React.ReactElement {
           videoId={song.videoId}
           getPosition={getPosition}
           onClose={() => setTheaterOpen(false)}
+          showVideo={showVideo}
         />
       )}
     </div>

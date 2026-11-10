@@ -8,9 +8,10 @@ interface Props {
   videoId: string
   getPosition: () => number
   onClose: () => void
+  showVideo: boolean
 }
 
-export function TheaterMode({ videoId, getPosition, onClose }: Props): React.ReactElement {
+export function TheaterMode({ videoId, getPosition, onClose, showVideo }: Props): React.ReactElement {
   const [lines, setLines] = useState<LrcLine[]>([])
   const [activeIndex, setActiveIndex] = useState(-1)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -102,13 +103,14 @@ export function TheaterMode({ videoId, getPosition, onClose }: Props): React.Rea
     }
     raf = requestAnimationFrame(draw)
     return () => cancelAnimationFrame(raf)
-  }, [])
+  }, [showVideo])
 
   const text = activeIndex >= 0 ? (lines[activeIndex]?.text ?? '') : ''
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black">
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+    <div className="fixed inset-0 z-[60]">
+      {!showVideo && <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />}
+      <div className="absolute inset-0 bg-black/30" />
       <div className="absolute inset-0 flex items-center justify-center px-16">
         <p
           key={activeIndex}
