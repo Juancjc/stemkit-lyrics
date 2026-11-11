@@ -1,3 +1,4 @@
+import { useTranslate } from '../lib/i18n'
 import { useEffect, useState } from 'react'
 import type { AppSettings, EngineStatus, GpuVendor } from '../../../shared/types'
 import { XIcon } from './Icons'
@@ -6,9 +7,11 @@ interface Props {
   settings: AppSettings
   gpu?: boolean
   gpuVendor?: GpuVendor
-  onChange: (patch: Partial<AppSettings>) => void
+  onChange: (patch: Partial<AppSettings>) => Promise<unknown>
   onClose: () => void
 }
+
+const selectClass = 'no-drag rounded-lg border border-white/20 bg-[#23212c] px-3 py-1.5 text-sm text-white'
 
 function Toggle({
   on,
@@ -59,13 +62,14 @@ function DownloadBar({
   starting?: boolean
   error?: string | null
 }): React.ReactElement | null {
+  const t = useTranslate()
   if (error) {
     return <p className="mt-1.5 text-[11px] text-rose-300">{error}</p>
   }
   if (starting) {
     return (
       <div className="mt-2">
-        <div className="text-[11px] text-white/45 mb-1">Starting…</div>
+        <div className="text-[11px] text-white/45 mb-1">{t('Starting…')}</div>
         <div className="h-1 rounded-full bg-white/10 overflow-hidden">
           <div
             className="h-full w-full rounded-full bg-gradient-to-r from-violet-400 to-emerald-300 animate-pulse opacity-40"
@@ -78,7 +82,7 @@ function DownloadBar({
   return (
     <div className="mt-2">
       <div className="flex items-center justify-between text-[11px] text-white/45 mb-1">
-        <span>Downloading…</span>
+        <span>{t('Downloading…')}</span>
         <span className="font-mono">{pct}%</span>
       </div>
       <div className="h-1 rounded-full bg-white/10 overflow-hidden">
@@ -92,23 +96,42 @@ function DownloadBar({
 }
 
 function ConfirmButton({ label, onClick }: { label: string; onClick: () => void }): React.ReactElement {
+  const t = useTranslate()
   return (
     <button
       onClick={onClick}
       className="no-drag mt-2 px-3 py-1.5 rounded-lg bg-violet-500/90 hover:bg-violet-500 active:scale-[0.98] text-white text-[12px] font-semibold transition-colors"
     >
-      {label}
+      {t(label)}
     </button>
   )
 }
 
 function SectionHeader({ label }: { label: string }): React.ReactElement {
+  const t = useTranslate()
   return (
-    <h3 className="text-[11px] font-semibold uppercase tracking-widest text-white/30">{label}</h3>
+    <h3 className="text-[11px] font-semibold uppercase tracking-widest text-white/30">{t(label)}</h3>
   )
 }
 
-export function Settings({ settings, gpu, gpuVendor, onChange, onClose }: Props): React.ReactElement {
+export function Settings({ settings: initialSettings, gpu, gpuVendor, onChange: persist, onClose }: Props): React.ReactElement {
+  const t = useTranslate()
+  const [settings, setDraft] = useState(initialSettings)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const onChange = (patch: Partial<AppSettings>): void => setDraft(current => ({ ...current, ...patch }))
+  const save = async (): Promise<void> => {
+    setSaving(true)
+    setSaveError('')
+    try {
+      await persist(settings)
+      onClose()
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setSaving(false)
+    }
+  }
   const [engines, setEngines] = useState<EngineStatus | null>(null)
   const [vocalsPct, setVocalsPct] = useState<number | null>(null)
   const [ftPct, setFtPct] = useState<number | null>(null)
@@ -233,7 +256,7 @@ export function Settings({ settings, gpu, gpuVendor, onChange, onClose }: Props)
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-white/[0.07]">
-          <h2 className="text-[14px] font-semibold tracking-tight">Settings</h2>
+          <h2 className="text-[14px] font-semibold tracking-tight">{t('Settings')}</h2>
           <button
             onClick={onClose}
             title="Close"
@@ -244,18 +267,57 @@ export function Settings({ settings, gpu, gpuVendor, onChange, onClose }: Props)
         </div>
 
         <div className="px-5 py-4 space-y-6 max-h-[70vh] overflow-y-auto">
+          <section className="grid gap-3">
+            <SectionHeader label="Appearance" />
+            <label className="flex items-center justify-between gap-3 text-sm">
+              {t('Language')}
+              <select className={selectClass} value={settings.language}
+                onChange={e => onChange({ language: e.target.value as AppSettings['language'] })}>
+                <option value="en">{t('English')}</option>
+                <option value="pt-BR">{t('Português (Brasil)')}</option>
+              </select>
+            </label>
+          </section>
+          <section className="grid gap-3">
+            <SectionHeader label="Karaoke appearance" />
+            <label className="flex items-center justify-between gap-3 text-sm">
+              {t('Highlight color')}
+              <select className={selectClass} value={settings.karaokeHighlight}
+                onChange={e => onChange({ karaokeHighlight: e.target.value as AppSettings['karaokeHighlight'] })}>
+                <option value="yellow">{t('Yellow')}</option>
+                <option value="cyan">{t('Cyan')}</option>
+                <option value="pink">{t('Pink')}</option>
+              </select>
+            </label>
+            <label className="flex items-center justify-between gap-3 text-sm">
+              {t('Highlight behavior')}
+              <select className={selectClass} value={settings.karaokeHighlightMode}
+                onChange={e => onChange({ karaokeHighlightMode: e.target.value as AppSettings['karaokeHighlightMode'] })}>
+                <option value="word">{t('Current word')}</option>
+                <option value="progressive">{t('Words sung so far')}</option>
+              </select>
+            </label>
+            <label className="flex items-center justify-between gap-3 text-sm">
+              {t('Text size')}
+              <select className={selectClass} value={settings.karaokeTextSize}
+                onChange={e => onChange({ karaokeTextSize: e.target.value as AppSettings['karaokeTextSize'] })}>
+                <option value="standard">{t('Standard')}</option>
+                <option value="large">{t('Large')}</option>
+              </select>
+            </label>
+          </section>
           <section className="space-y-5">
             <SectionHeader label="Separation" />
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[13px] font-medium">Studio-quality vocals</p>
+                <p className="text-[13px] font-medium">{t('Studio-quality vocals')}</p>
                 <p className="text-[11.5px] text-white/40 leading-relaxed mt-0.5">
-                  Cleaner, more natural vocal separation.
+              {t('Cleaner, more natural vocal separation.')}
                 </p>
                 {gpuLine && <p className="text-[11px] text-white/30 mt-1">{gpuLine}</p>}
                 <DownloadBar pct={vocalsPct} starting={vocalsBusy && vocalsPct === null} error={vocalsError} />
                 {showVocalsConfirm && (
-                  <ConfirmButton label="Download now · 913 MB" onClick={startVocals} />
+                  <ConfirmButton label="Download now Â· 913 MB" onClick={startVocals} />
                 )}
               </div>
               <Toggle
@@ -269,7 +331,7 @@ export function Settings({ settings, gpu, gpuVendor, onChange, onClose }: Props)
             {gpuVendor && (
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-[13px] font-medium">GPU acceleration</p>
+                  <p className="text-[13px] font-medium">{t('GPU acceleration')}</p>
                   <p className="text-[11.5px] text-white/40 leading-relaxed mt-0.5">
                     {gpuVendor === 'amd'
                       ? 'Use your AMD GPU for much faster splits. Experimental — depends on your hardware.'
@@ -277,7 +339,7 @@ export function Settings({ settings, gpu, gpuVendor, onChange, onClose }: Props)
                   </p>
                   <DownloadBar pct={gpuPct} starting={gpuBusy && gpuPct === null} error={gpuError} />
                   {showGpuConfirm && (
-                    <ConfirmButton label="Download now · ~3 GB" onClick={startGpu} />
+                    <ConfirmButton label="Download now Â· ~3 GB" onClick={startGpu} />
                   )}
                 </div>
                 <Toggle
@@ -291,13 +353,13 @@ export function Settings({ settings, gpu, gpuVendor, onChange, onClose }: Props)
 
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[13px] font-medium">Cleaner instruments</p>
+                <p className="text-[13px] font-medium">{t('Cleaner instruments')}</p>
                 <p className="text-[11.5px] text-white/40 leading-relaxed mt-0.5">
-                  Extra polish for drums, bass and other. Up to 4× slower.
+              {t('Extra polish for drums, bass and other. Up to 4Ã— slower.')}
                 </p>
                 <DownloadBar pct={ftPct} starting={ftBusy && ftPct === null} error={ftError} />
                 {showFtConfirm && (
-                  <ConfirmButton label="Download now · ~320 MB" onClick={startFt} />
+                  <ConfirmButton label="Download now Â· ~320 MB" onClick={startFt} />
                 )}
               </div>
               <Toggle
@@ -310,10 +372,9 @@ export function Settings({ settings, gpu, gpuVendor, onChange, onClose }: Props)
 
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[13px] font-medium">Extra quality pass</p>
+                <p className="text-[13px] font-medium">{t('Extra quality pass')}</p>
                 <p className="text-[11.5px] text-white/40 leading-relaxed mt-0.5">
-                  Separates the song twice and blends the takes for cleaner results. Up to 3×
-                  slower.
+              {t('Separates the song twice and blends the takes for cleaner results. Up to 3Ã— slower.')}
                 </p>
               </div>
               <div className="flex shrink-0 rounded-lg bg-white/[0.06] p-0.5 border border-white/[0.08]">
@@ -337,8 +398,7 @@ export function Settings({ settings, gpu, gpuVendor, onChange, onClose }: Props)
             </div>
 
             <p className="text-[11px] text-white/30 leading-relaxed">
-              Changes apply to future splits. Songs you already split keep their current sound —
-              split them again to use the new settings.
+              {t('Changes apply to future splits. Songs you already split keep their current sound — split them again to use the new settings.')}
             </p>
           </section>
 
@@ -346,10 +406,9 @@ export function Settings({ settings, gpu, gpuVendor, onChange, onClose }: Props)
             <SectionHeader label="Export" />
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[13px] font-medium">Export format</p>
+                <p className="text-[13px] font-medium">{t('Export format')}</p>
                 <p className="text-[11.5px] text-white/40 leading-relaxed mt-0.5">
-                  AAC (.m4a) is transcoded on export with the built-in ffmpeg — much smaller
-                  files, small quality loss.
+              {t('AAC (.m4a) is transcoded on export with the built-in ffmpeg — much smaller files, small quality loss.')}
                 </p>
               </div>
               <div className="flex shrink-0 rounded-lg bg-white/[0.06] p-0.5 border border-white/[0.08]">
@@ -373,10 +432,9 @@ export function Settings({ settings, gpu, gpuVendor, onChange, onClose }: Props)
             </div>
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[13px] font-medium">Export folder</p>
+                <p className="text-[13px] font-medium">{t('Export folder')}</p>
                 <p className="text-[11.5px] text-white/40 leading-relaxed mt-0.5">
-                  Copy the stems of every finished split straight into this folder, in a subfolder
-                  per song. They stay in the library either way.
+              {t('Copy the stems of every finished split straight into this folder, in a subfolder per song. They stay in the library either way.')}
                 </p>
                 {settings.exportFolder && (
                   <p className="mt-1.5 text-[11px] font-mono text-white/45 break-all leading-relaxed">
@@ -396,7 +454,7 @@ export function Settings({ settings, gpu, gpuVendor, onChange, onClose }: Props)
                     onClick={() => onChange({ exportFolder: '' })}
                     className="no-drag text-[11px] text-white/35 hover:text-white/70 transition-colors"
                   >
-                    Stop exporting
+              {t('Stop exporting')}
                   </button>
                 )}
               </div>
@@ -407,10 +465,9 @@ export function Settings({ settings, gpu, gpuVendor, onChange, onClose }: Props)
             <SectionHeader label="Playback" />
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[13px] font-medium">Hide YouTube video</p>
+                <p className="text-[13px] font-medium">{t('Hide YouTube video')}</p>
                 <p className="text-[11.5px] text-white/40 leading-relaxed mt-0.5">
-                  Stems always play locally from your library. This stops streaming the video
-                  while you play and uses cached thumbnails instead.
+              {t('Stems always play locally from your library. This stops streaming the video while you play and uses cached thumbnails instead.')}
                 </p>
               </div>
               <Toggle
@@ -419,6 +476,14 @@ export function Settings({ settings, gpu, gpuVendor, onChange, onClose }: Props)
               />
             </div>
           </section>
+        </div>
+        <div className="flex items-center justify-end gap-3 border-t border-white/10 px-5 py-4">
+          {saveError && <p role="alert" className="text-sm text-rose-300">{saveError}</p>}
+          <button onClick={onClose} disabled={saving} className="no-drag px-4 py-2 text-sm">{t('Cancel')}</button>
+          <button onClick={() => void save()} disabled={saving}
+            className="no-drag rounded-lg bg-violet-500 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            {t(saving ? 'Saving…' : 'Save')}
+          </button>
         </div>
       </div>
     </div>

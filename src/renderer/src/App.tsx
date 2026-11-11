@@ -3,6 +3,7 @@ import type { AppSettings, EnvStatus, JobProgress, JobStage, Song, UpdateEvent }
 import { DEFAULT_STEMS, MODEL_DEFAULT } from '../../shared/types'
 import { parseVideoId } from '../../shared/url'
 import { isAudioPath, isLocalId, localSongId } from '../../shared/local'
+import { LanguageContext, useTranslate, type Translate } from './lib/i18n'
 import { Sidebar } from './components/Sidebar'
 import { Home } from './components/Home'
 import { Processing } from './components/Processing'
@@ -22,16 +23,16 @@ type LastStart =
   | { kind: 'url'; url: string; model: string }
   | { kind: 'local'; filePath: string; model: string }
 
-function stageLabel(stage: JobStage, pct: number): string {
+function stageLabel(stage: JobStage, pct: number, t: Translate): string {
   switch (stage) {
     case 'metadata':
       return 'reading info…'
     case 'download':
-      return `downloading ${Math.round(pct)}%`
+      return t('downloading {pct}%', { pct: Math.round(pct) })
     case 'convert':
       return 'converting…'
     case 'separate':
-      return `separating ${Math.round(pct)}%`
+      return t('separating {pct}%', { pct: Math.round(pct) })
     case 'finalize':
       return 'finishing…'
   }
@@ -43,6 +44,27 @@ function withoutKey<T>(map: Record<string, T>, key: string): Record<string, T> {
 }
 
 export default function App(): React.ReactElement {
+  const [settings, setSettings] = useState<AppSettings | null>(null)
+  useEffect(() => {
+    let current = true
+    void window.stemkit.getSettings().then(value => { if (current) setSettings(value) })
+    const off = window.stemkit.onSettingsChange(value => {
+      current = false
+      setSettings(value)
+    })
+    return () => { current = false; off() }
+  }, [])
+  const language = settings?.language ?? 'en'
+  useEffect(() => { document.documentElement.lang = language }, [language])
+  return (
+    <LanguageContext.Provider value={language}>
+      <Workspace settings={settings} />
+    </LanguageContext.Provider>
+  )
+}
+
+function Workspace({ settings }: { settings: AppSettings | null }): React.ReactElement {
+  const t = useTranslate()
   const [status, setStatus] = useState<EnvStatus | null>(null)
   const [songs, setSongs] = useState<Song[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -52,7 +74,6 @@ export default function App(): React.ReactElement {
   const [envLogs, setEnvLogs] = useState<EnvLog[]>([])
   const [update, setUpdate] = useState<UpdateEvent | null>(null)
   const [appVersion, setAppVersion] = useState<string | undefined>(undefined)
-  const [settings, setSettings] = useState<AppSettings | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [dropping, setDropping] = useState(false)
@@ -68,8 +89,6 @@ export default function App(): React.ReactElement {
   useEffect(() => {
     void window.stemkit.envStatus().then(setStatus)
     void window.stemkit.listSongs().then(setSongs)
-    void window.stemkit.getSettings().then(setSettings)
-    const offSettings = window.stemkit.onSettingsChange(setSettings)
     const offJob = window.stemkit.onJobEvent((ev) => {
       if (ev.kind === 'progress') {
         setJobs((prev) => ({ ...prev, [ev.data.videoId]: ev.data }))
@@ -100,7 +119,6 @@ export default function App(): React.ReactElement {
       offEnv()
       offUpdate()
       offAbout()
-      offSettings()
     }
   }, [])
 
@@ -252,7 +270,7 @@ export default function App(): React.ReactElement {
       window.removeEventListener('dragleave', onDragLeave)
       window.removeEventListener('drop', onDrop)
     }
-  }, [ready, startLocal, startUrl])
+  }, [ready, startLocal, startUrl, t])
 
   const cancelSelectedJob = useCallback(
     (videoId: string): void => {
@@ -287,7 +305,7 @@ export default function App(): React.ReactElement {
   const clearAll = useCallback(async (): Promise<void> => {
     if (!songs.length) return
     // main cancels anything mid-split before wiping the folders
-    if (!window.confirm(`Remove all ${songs.length} songs and delete their stems from this computer?`))
+    if (!window.confirm(t('Remove all {count} songs and delete their stems from this computer?', { count: songs.length })))
       return
     releaseBufferCache()
     setJobs({})
@@ -295,7 +313,7 @@ export default function App(): React.ReactElement {
     setActiveId(null)
     await window.stemkit.clearLibrary()
     setSongs(await window.stemkit.listSongs())
-  }, [songs.length])
+  }, [songs.length, t])
 
   const activeSong = useMemo(
     () => songs.find((s) => s.videoId === activeId) ?? null,
@@ -314,7 +332,7 @@ export default function App(): React.ReactElement {
   const pendingMap = useMemo(() => {
     const map: Record<string, { label: string; error?: boolean }> = {}
     for (const j of Object.values(jobs)) {
-      map[j.videoId] = { label: stageLabel(j.stage, j.pct) }
+      map[j.videoId] = { label: stageLabel(j.stage, j.pct, t) }
     }
     for (const [id, message] of Object.entries(errors)) {
       if (!map[id]) {
@@ -322,7 +340,7 @@ export default function App(): React.ReactElement {
       }
     }
     return map
-  }, [jobs, errors])
+  }, [jobs, errors, t])
 
   const displaySongs = useMemo(() => {
     const known = new Set(songs.map((s) => s.videoId))
@@ -348,7 +366,7 @@ export default function App(): React.ReactElement {
     return [...top, ...songs]
   }, [songs, jobs, errors])
 
-  if (!status) {
+  if (!status || !settings) {
     return (
       <>
         <div className="h-full flex items-center justify-center">
@@ -436,7 +454,7 @@ export default function App(): React.ReactElement {
           settings={settings}
           gpu={status.gpu}
           gpuVendor={status.gpuVendor}
-          onChange={(patch) => void window.stemkit.setSettings(patch)}
+          onChange={async (patch) => { await window.stemkit.setSettings(patch) }}
           onClose={() => setSettingsOpen(false)}
         />
       )}

@@ -1,3 +1,4 @@
+import { useTranslate } from '../lib/i18n'
 import { useEffect, useState } from 'react'
 import { LogoMark, XIcon } from './Icons'
 
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export function About({ version, onClose }: Props): React.ReactElement {
+  const t = useTranslate()
   const [checkingUpdates, setCheckingUpdates] = useState(false)
   const [updateMessage, setUpdateMessage] = useState('')
 
@@ -77,7 +79,7 @@ export function About({ version, onClose }: Props): React.ReactElement {
       >
         <button
           onClick={onClose}
-          title="Close"
+          title={t('Close')}
           className="no-drag absolute right-3 top-3 w-7 h-7 rounded-lg hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-colors"
         >
           <XIcon className="w-3.5 h-3.5" />

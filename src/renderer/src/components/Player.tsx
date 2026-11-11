@@ -1,5 +1,7 @@
+import { useTranslate } from '../lib/i18n'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { AppSettings, Song, StemId, StemPanMap } from '../../../shared/types'
+import { DEFAULT_SETTINGS } from '../../../shared/types'
+import type { AppSettings, KaraokeTrack, Song, StemId, StemPanMap } from '../../../shared/types'
 import { engine, decodePayload, type BufferMap } from '../lib/engine'
 import { buildStemMeta } from '../lib/stems'
 import { fmtTime } from '../lib/format'
@@ -9,7 +11,8 @@ import { StemLane } from './StemLane'
 import { Transport, type PresetId } from './Transport'
 import { DownloadIcon, MicIcon } from './Icons'
 import { parseLrc } from '../lib/lrc'
-import { lyricFrames } from '../lib/lyric-frames'
+import { Karaoke } from './Karaoke'
+import { karaokeFrames, lyricFrames } from '../lib/lyric-frames'
 import { Lyrics } from './Lyrics'
 import { TheaterMode } from './TheaterMode'
 
@@ -62,7 +65,8 @@ interface Props {
   settings?: AppSettings
 }
 
-export function Player({ song, settings }: Props): React.ReactElement {
+export function Player({ song, settings = DEFAULT_SETTINGS }: Props): React.ReactElement {
+  const t = useTranslate()
   const containerRef = useRef<HTMLDivElement>(null)
   const hostRef = useRef<YouTubeHost | null>(null)
   const posRef = useRef(0)
@@ -92,9 +96,12 @@ export function Player({ song, settings }: Props): React.ReactElement {
   const [solos, setSolos] = useState<Set<StemId>>(new Set())
   const [master, setMaster] = useState(0.9)
   const [preset, setPreset] = useState<PresetId | 'custom'>('all')
+  const [showKaraoke, setShowKaraoke] = useState(false)
+  const [lyricsRevision, setLyricsRevision] = useState(0)
   const [showLyrics, setShowLyrics] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [exportMessage, setExportMessage] = useState('')
+  const [exportMessage, setExportMessage] = useState<{ key: string; path?: string } | null>(null)
+  const [singingTrack, setSingingTrack] = useState<KaraokeTrack | null>(null)
   const [theaterOpen, setTheaterOpen] = useState(false)
 
   const stemMeta = useMemo(() => buildStemMeta(Object.keys(buffers) as StemId[]), [buffers])
@@ -106,7 +113,7 @@ export function Player({ song, settings }: Props): React.ReactElement {
   // stems always play locally from the library; hiding the video just stops
   // streaming it from YouTube (and switches thumbnails to the local cache)
   const showVideo = !(settings?.hideVideo ?? false) && !isLocal
-  const addedLabel = new Date(song.addedAt).toLocaleDateString(undefined, {
+  const addedLabel = new Date(song.addedAt).toLocaleDateString(settings.language, {
     month: 'short',
     day: 'numeric',
     year: 'numeric'
@@ -333,22 +340,48 @@ export function Player({ song, settings }: Props): React.ReactElement {
 
   const saveVideo = async (): Promise<void> => {
     setExporting(true)
-    setExportMessage('')
+    setExportMessage(null)
     try {
       const cached = await window.stemkit.getLyrics(song.videoId)
       const lines = parseLrc(cached?.syncedLyrics ?? '')
       if (!lines.length) {
         setShowLyrics(true)
-        setExportMessage('Choose synchronized lyrics, then download the video.')
+        setExportMessage({ key: 'Choose synchronized lyrics, then download the video.' })
         return
       }
       const result = await window.stemkit.exportLyricVideo(song.videoId, lyricFrames(lines))
-      if (result.saved) setExportMessage('Saved to ' + result.path)
+      if (result.saved) setExportMessage({ key: 'Saved to {path}', path: result.path })
     } catch (err) {
-      setExportMessage(err instanceof Error ? err.message : String(err))
+      setExportMessage({ key: err instanceof Error ? err.message : String(err) })
     } finally {
       setExporting(false)
     }
+  }
+
+  const downloadKaraoke = async (track: KaraokeTrack, instrumental: boolean): Promise<void> => {
+    setExportMessage(null)
+    const gains = Object.fromEntries(stemMeta.map(({ id }) => [
+      id, (instrumental && id === 'vocals') || mutes.has(id) || (solos.size && !solos.has(id)) ? 0 : (vols[id] ?? 1)
+    ]))
+    const result = await window.stemkit.exportLyricVideo(song.videoId, karaokeFrames(track, settings), {
+      gains, pans, master
+    })
+    if (result.saved) setExportMessage({ key: 'Saved to {path}', path: result.path })
+  }
+
+  const startSinging = (track: KaraokeTrack): void => {
+    setSingingTrack(track)
+    setTheaterOpen(true)
+    // Mute the entire separated vocal stem while keeping the other lane settings.
+    const nextMutes = new Set(mutes).add('vocals')
+    const nextSolos = new Set(solos)
+    nextSolos.delete('vocals')
+    setMutes(nextMutes)
+    setSolos(nextSolos)
+    setPreset('custom')
+    engine.applyMix(vols, nextMutes, nextSolos, master, pans)
+    if (duration > 0 && posRef.current >= duration - 0.05) seekTo(0)
+    if (!playingRef.current) togglePlay()
   }
 
   const exportAllStems = useCallback((): void => {
@@ -390,7 +423,10 @@ export function Player({ song, settings }: Props): React.ReactElement {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (e.target instanceof HTMLInputElement) return
+      if (e.target instanceof HTMLElement && (
+        e.target.isContentEditable || e.target.closest('input, textarea, select') ||
+        (e.code === 'Space' && e.target.closest('button'))
+      )) return
       if (e.code === 'Space') {
         e.preventDefault()
         togglePlay()
@@ -440,19 +476,26 @@ export function Player({ song, settings }: Props): React.ReactElement {
           }`}
         >
           <MicIcon className="w-5 h-5" />
-          Lyrics
+          {t('Lyrics')}
+        </button>
+        <button
+          onClick={() => setShowKaraoke(v => !v)}
+          aria-expanded={showKaraoke}
+          className="no-drag ml-2 min-h-11 shrink-0 rounded-xl bg-amber-300 px-4 text-base font-semibold text-black hover:bg-amber-200"
+        >
+          {t('Karaoke studio')}
         </button>
         <button
           onClick={() => void saveVideo()}
           disabled={exporting}
-          title="Download video with lyrics"
+          title={t('Download video with lyrics')}
           className="no-drag ml-2 inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-white px-4 text-base font-semibold text-black hover:bg-violet-100 focus-visible:outline-2 focus-visible:outline-violet-400 disabled:opacity-60"
         >
           <DownloadIcon className="w-5 h-5" />
-          {exporting ? 'Exporting…' : 'Download video'}
+          {t(exporting ? 'Exporting…' : 'Download video')}
         </button>
       </header>
-      {exportMessage && <p role="status" className="px-6 pb-2 break-words text-sm text-white/80">{exportMessage}</p>}
+      {exportMessage && <p role="status" className="px-6 pb-2 break-words text-sm text-white/80">{t(exportMessage.key, { path: exportMessage.path ?? '' })}</p>}
 
       <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
         <div className="max-w-6xl mx-auto">
@@ -471,7 +514,7 @@ export function Player({ song, settings }: Props): React.ReactElement {
                   />
                   {!ytReady && (
                     <div className="absolute inset-0 flex items-center justify-center animate-pulse">
-                      <span className="text-[10px] text-white/40 tracking-widest uppercase">loading…</span>
+                      <span className="text-[10px] text-white/40 tracking-widest uppercase">{t('loading…')}</span>
                     </div>
                   )}
                   {decodeError && (
@@ -495,12 +538,12 @@ export function Player({ song, settings }: Props): React.ReactElement {
                 <div className="min-w-0 flex-1">
                   <h3 className="text-xl font-semibold leading-snug truncate">{song.title}</h3>
                   <p className="text-xs text-white/45 mt-1.5 font-mono truncate">
-                    {fmtTime(song.duration)} · added {addedLabel}
-                    {song.took ? ` · split in ${fmtTime(song.took)}` : ''}
+                    {fmtTime(song.duration)} · {t('added {date}', { date: addedLabel })}
+                    {song.took ? ' · ' + t('split in {duration}', { duration: fmtTime(song.took) }) : ''}
                   </p>
                 </div>
                 <span className="shrink-0 text-xs px-3 py-1.5 rounded-full bg-white/5 text-white/50 font-medium">
-                  {stemMeta.length} stems
+                  {t('{count} stems', { count: stemMeta.length })}
                 </span>
               </div>
 
@@ -514,7 +557,7 @@ export function Player({ song, settings }: Props): React.ReactElement {
                 {stemMeta.map((meta) => (
                   <span key={meta.id} className="flex items-center gap-2 text-[14px] text-white/75">
                     <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: meta.color }} />
-                    <span className="capitalize">{meta.label}</span>
+                    <span className="capitalize">{t(meta.label)}</span>
                   </span>
                 ))}
               </div>
@@ -526,14 +569,14 @@ export function Player({ song, settings }: Props): React.ReactElement {
                   className="no-drag glass rounded-xl px-5 py-3 text-[13px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2 disabled:opacity-40"
                 >
                   <DownloadIcon className="w-4 h-4" />
-                  Export everything
+                  {t('Export everything')}
                 </button>
                 {youtubeUrl && (
                   <button
                     onClick={() => window.stemkit.openExternal(youtubeUrl)}
                     className="no-drag glass rounded-xl px-5 py-3 text-[13px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors"
                   >
-                    Open on YouTube
+                    {t('Open on YouTube')}
                   </button>
                 )}
               </div>
@@ -545,6 +588,7 @@ export function Player({ song, settings }: Props): React.ReactElement {
               <Lyrics
                 exporting={exporting}
                 onSaveVideo={saveVideo}
+                onLyricsChanged={() => setLyricsRevision(v => v + 1)}
                 videoId={song.videoId}
                 title={song.title}
                 getPosition={getPosition}
@@ -552,6 +596,19 @@ export function Player({ song, settings }: Props): React.ReactElement {
                 onOpenTheater={() => setTheaterOpen(true)}
               />
             </div>
+          )}
+
+          {showKaraoke && (
+            <Karaoke
+              key={lyricsRevision}
+              style={settings}
+              videoId={song.videoId}
+              getPosition={getPosition}
+              onSing={startSinging}
+              onDownload={downloadKaraoke}
+              onChooseLyrics={() => setShowLyrics(true)}
+              ready={!decoding && !decodeError && stemMeta.length > 0}
+            />
           )}
 
           <Transport
@@ -567,7 +624,7 @@ export function Player({ song, settings }: Props): React.ReactElement {
             youtubeUrl={youtubeUrl ?? undefined}
           />
 
-          {panError && <p role="status" className="mt-3 text-xs text-amber-300">{panError}</p>}
+          {panError && <p role="status" className="mt-3 text-xs text-amber-300">{t(panError)}</p>}
           <div className="mt-4 space-y-2">
             {decoding
               ? [...Array(4)].map((_, i) => (
@@ -605,7 +662,9 @@ export function Player({ song, settings }: Props): React.ReactElement {
         <TheaterMode
           videoId={song.videoId}
           getPosition={getPosition}
-          onClose={() => setTheaterOpen(false)}
+          karaoke={singingTrack}
+          karaokeStyle={settings}
+          onClose={() => { setTheaterOpen(false); setSingingTrack(null) }}
           showVideo={showVideo}
         />
       )}

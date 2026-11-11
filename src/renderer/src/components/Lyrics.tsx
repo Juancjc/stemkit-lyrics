@@ -1,3 +1,4 @@
+import { useTranslate } from '../lib/i18n'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CachedLyrics, LyricsTrack } from '../../../shared/types'
 import { parseLrc, activeLrcIndex } from '../lib/lrc'
@@ -10,13 +11,15 @@ interface Props {
   getPosition: () => number
   onSeek: (seconds: number) => void
   exporting: boolean
+  onLyricsChanged: () => void
   onSaveVideo: () => void
   onOpenTheater: () => void
 }
 
 type Status = 'loading' | 'found' | 'not-found' | 'error'
 
-export function Lyrics({ videoId, title, getPosition, onSeek, onOpenTheater, exporting, onSaveVideo }: Props): React.ReactElement {
+export function Lyrics({ videoId, title, getPosition, onSeek, onOpenTheater, exporting, onSaveVideo, onLyricsChanged }: Props): React.ReactElement {
+  const t = useTranslate()
   const [status, setStatus] = useState<Status>('loading')
   const [cached, setCached] = useState<CachedLyrics | null>(null)
   const [query, setQuery] = useState(title)
@@ -89,6 +92,7 @@ export function Lyrics({ videoId, title, getPosition, onSeek, onOpenTheater, exp
   const pick = async (track: LyricsTrack): Promise<void> => {
     try {
       const saved = await window.stemkit.setLyrics(videoId, track)
+      onLyricsChanged()
       setCached(saved)
       setStatus('found')
       setResults([])
@@ -99,6 +103,7 @@ export function Lyrics({ videoId, title, getPosition, onSeek, onOpenTheater, exp
 
   const forget = async (): Promise<void> => {
     await window.stemkit.clearLyrics(videoId)
+    onLyricsChanged()
     setCached(null)
     setStatus('not-found')
   }
@@ -107,7 +112,7 @@ export function Lyrics({ videoId, title, getPosition, onSeek, onOpenTheater, exp
     <div className="glass rounded-2xl px-5 py-4 rise-in">
       <div className="flex items-center justify-between mb-3">
         <span className="text-[11px] font-semibold uppercase tracking-widest text-white/30">
-          Lyrics
+          {t('Lyrics')}
         </span>
         <span className="flex items-center gap-2">
           {status === 'found' && lines.length > 0 && (
@@ -118,11 +123,11 @@ export function Lyrics({ videoId, title, getPosition, onSeek, onOpenTheater, exp
                 className="no-drag inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-black hover:bg-violet-100 disabled:opacity-60"
               >
                 <DownloadIcon className="w-4 h-4" />
-                {exporting ? 'Exporting…' : 'Save video with lyrics'}
+                {t(exporting ? 'Exporting…' : 'Save video with lyrics')}
               </button>
               <button
                 onClick={onOpenTheater}
-                title="Open Theater Mode"
+                title={t('Open Theater Mode')}
                 className="no-drag w-8 h-8 rounded-md hover:bg-white/10 text-white/70 hover:text-white flex items-center justify-center transition-colors"
               >
                 <ExpandIcon className="w-4 h-4" />
@@ -134,14 +139,14 @@ export function Lyrics({ videoId, title, getPosition, onSeek, onOpenTheater, exp
               onClick={() => void forget()}
               className="no-drag text-[11px] text-white/35 hover:text-white/70 transition-colors"
             >
-              Search again
+              {t('Search again')}
             </button>
           )}
         </span>
       </div>
 
       {status === 'found' && !cached?.instrumental && !lines.length && (
-        <p className="mb-3 text-sm text-white/65">Choose synchronized lyrics to save a video.</p>
+        <p className="mb-3 text-sm text-white/65">{t('Choose synchronized lyrics to save a video.')}</p>
       )}
       {status === 'loading' && (
         <div className="space-y-2">
@@ -156,13 +161,13 @@ export function Lyrics({ videoId, title, getPosition, onSeek, onOpenTheater, exp
       )}
 
       {status === 'error' && (
-        <p className="text-[13px] text-rose-200">Could not load lyrics.</p>
+        <p className="text-[13px] text-rose-200">{t('Could not load lyrics.')}</p>
       )}
 
       {status === 'found' && cached && (
         <>
           {cached.instrumental ? (
-            <p className="text-[13px] text-white/40 italic">Instrumental track</p>
+            <p className="text-[13px] text-white/40 italic">{t('Instrumental track')}</p>
           ) : lines.length > 0 ? (
             <div ref={listRef} className="max-h-72 overflow-y-auto space-y-1.5 pr-1">
               {lines.map((line, i) => (
@@ -187,7 +192,7 @@ export function Lyrics({ videoId, title, getPosition, onSeek, onOpenTheater, exp
               {cached.plainLyrics}
             </pre>
           ) : (
-            <p className="text-[13px] text-white/40">No lyrics text available for this match.</p>
+            <p className="text-[13px] text-white/40">{t('No lyrics text available for this match.')}</p>
           )}
         </>
       )}
@@ -199,7 +204,7 @@ export function Lyrics({ videoId, title, getPosition, onSeek, onOpenTheater, exp
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && void runSearch()}
-              placeholder="Track title, or title and artist…"
+              placeholder={t('Track title, or title and artist…')}
               spellCheck={false}
               className="no-drag flex-1 glass rounded-lg px-3 py-2 text-[13px] outline-none placeholder:text-white/25 focus:ring-2 focus:ring-violet-400/60 transition-shadow"
             />
@@ -208,12 +213,12 @@ export function Lyrics({ videoId, title, getPosition, onSeek, onOpenTheater, exp
               disabled={searching || !query.trim()}
               className="no-drag px-4 rounded-lg bg-white text-black text-[13px] font-semibold hover:bg-white/90 transition-colors disabled:opacity-40"
             >
-              {searching ? '…' : 'Search'}
+              {t(searching ? '…' : 'Search')}
             </button>
           </div>
 
           {searchError && (
-            <p className="mt-2 text-[12px] text-rose-200">Search failed: {searchError}</p>
+            <p className="mt-2 text-[12px] text-rose-200">{t('Search failed: {error}', { error: searchError })}</p>
           )}
 
           {!searching && results.length > 0 && (
@@ -241,7 +246,7 @@ export function Lyrics({ videoId, title, getPosition, onSeek, onOpenTheater, exp
 
           {!searching && results.length === 0 && !searchError && (
             <p className="mt-2 text-[12px] text-white/30">
-              No lyrics cached for this song yet — search to find a match.
+              {t('No lyrics cached for this song yet — search to find a match.')}
             </p>
           )}
         </div>

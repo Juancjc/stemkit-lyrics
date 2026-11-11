@@ -1,3 +1,4 @@
+import { useTranslate } from '../lib/i18n'
 import { useEffect, useRef } from 'react'
 import type { EnvStatus } from '../../../shared/types'
 import { LogoMark } from './Icons'
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function Setup({ status, logs, onInstall }: Props): React.ReactElement {
+  const t = useTranslate()
   const logRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -20,7 +22,7 @@ export function Setup({ status, logs, onInstall }: Props): React.ReactElement {
       <div className="w-full max-w-lg rise-in">
         <div className="flex items-center gap-3 justify-center">
           <LogoMark className="w-10 h-10" />
-          <h1 className="text-xl font-bold tracking-tight">Welcome to StemKit</h1>
+          <h1 className="text-xl font-bold tracking-tight">{t('Welcome to StemKit')}</h1>
         </div>
         <p className="text-center text-white/45 text-sm mt-3 leading-relaxed">
           One-time setup — after this everything works offline, right on your machine.

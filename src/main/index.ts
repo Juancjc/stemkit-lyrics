@@ -42,7 +42,8 @@ import { maybePing } from './telemetry'
 import { loadLyrics, saveLyrics, clearLyrics, searchLyrics } from './lyrics'
 import { loadBackground, pickBackground, clearBackground } from './background'
 import { exportLyricVideo } from './lyric-video'
-import type { LyricFrame, LyricsTrack } from '../shared/types'
+import { getKaraoke, prepareKaraoke, saveKaraoke } from './karaoke'
+import type { KaraokeMix, KaraokeTrack, LyricFrame, LyricsTrack } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
 let staticServer: Server | null = null
@@ -329,17 +330,20 @@ app.whenReady().then(async () => {
   })
 
   ipcMain.handle('search:youtube', (_e, query: string) => searchYouTube(query))
-  ipcMain.handle('lyrics:export-video', async (_e, videoId: string, frames: LyricFrame[]) => {
+  ipcMain.handle('karaoke:get', (_e, id: string) => getKaraoke(id))
+  ipcMain.handle('karaoke:prepare', (_e, id: string) => prepareKaraoke(id))
+  ipcMain.handle('karaoke:save', (_e, id: string, track: KaraokeTrack) => saveKaraoke(id, track))
+  ipcMain.handle('lyrics:export-video', async (_e, videoId: string, frames: LyricFrame[], mix?: KaraokeMix) => {
     const song = loadSongs().find(s => s.videoId === videoId)
     if (!song) throw new Error('Unknown song')
     const background = loadBackground(videoId)
     const result = await dialog.showSaveDialog({
-      title: 'Save video with lyrics',
-      defaultPath: sanitizeName(song.title) + ' - lyrics.mp4',
+      title: mix ? 'Save karaoke video' : 'Save video with lyrics',
+      defaultPath: sanitizeName(song.title) + (mix ? ' - karaoke.mp4' : ' - lyrics.mp4'),
       filters: [{ name: 'MP4 video', extensions: ['mp4'] }]
     })
     if (result.canceled || !result.filePath) return { saved: false }
-    await exportLyricVideo(song, frames, background, requireExportFfmpeg(), result.filePath)
+    await exportLyricVideo(song, frames, background, requireExportFfmpeg(), result.filePath, mix)
     return { saved: true, path: result.filePath }
   })
   ipcMain.handle('lyrics:get', (_e, videoId: string) => loadLyrics(videoId))

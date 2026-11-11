@@ -2,9 +2,16 @@
 
 StemKit can talk to [9Router](https://9router.juancjc.com.br), an
 OpenAI-compatible AI gateway, through a small main-process service layer
-(`src/main/nine-router.ts`, `src/main/ai-gateway.ts`). As of this writing
-nothing in the app's UI calls it yet — this is infrastructure for a future
-feature, verifiable on its own via the test described below.
+(`src/main/nine-router.ts`, `src/main/ai-gateway.ts`). Karaoke studio uses the configured model to estimate word timing for the selected
+synchronized lyrics. The original language and the order of the verses and repeated
+choruses are preserved. Review the timings against the recording and save any
+corrections in the studio. Subsequent playback and karaoke exports use the saved
+timeline on disk.
+
+Select **Time to sing** to play with the vocal stem muted. If lead and backing
+voices share that stem, both are muted. For a karaoke MP4, choose **Instrumental**
+or **Current mix** and use the separate karaoke download button. The latter
+includes any vocal level, mute, solo and pan adjustments in the mixer.
 
 ## Environment variables
 

@@ -24,6 +24,10 @@ export interface Song {
 }
 
 export interface AppSettings {
+  language: 'en' | 'pt-BR'
+  karaokeHighlight: 'yellow' | 'cyan' | 'pink'
+  karaokeTextSize: 'standard' | 'large'
+  karaokeHighlightMode: 'word' | 'progressive'
   shifts: 1 | 2
   htdemucsFt: boolean
   roformerVocals: boolean
@@ -45,7 +49,13 @@ export interface AppSettings {
   exportFolder: string
 }
 
+export type KaraokeStyle = Pick<AppSettings, 'karaokeHighlight' | 'karaokeTextSize' | 'karaokeHighlightMode'>
+
 export const DEFAULT_SETTINGS: AppSettings = {
+  language: 'en',
+  karaokeHighlight: 'yellow',
+  karaokeTextSize: 'standard',
+  karaokeHighlightMode: 'word',
   shifts: 1,
   htdemucsFt: false,
   roformerVocals: false,
@@ -148,6 +158,21 @@ export interface UpdateEvent {
   pct?: number
 }
 
+export interface KaraokeTrack {
+  sourceHash?: string
+  lines: {
+    start: number
+    end: number
+    words: { text: string; start: number }[]
+  }[]
+}
+
+export interface KaraokeMix {
+  gains: Partial<Record<StemId, number>>
+  pans: StemPanMap
+  master: number
+}
+
 export interface LyricFrame {
   time: number
   png: Uint8Array
@@ -163,7 +188,10 @@ export interface StemKitApi {
   getBuffers(videoId: string): Promise<Record<string, Uint8Array>>
   getStemPan(videoId: string): Promise<StemPanMap>
   setStemPan(videoId: string, pans: StemPanMap): Promise<void>
-  exportLyricVideo(videoId: string, frames: LyricFrame[]): Promise<{ saved: boolean; path?: string }>
+  getKaraoke(videoId: string): Promise<KaraokeTrack | null>
+  prepareKaraoke(videoId: string): Promise<KaraokeTrack>
+  saveKaraoke(videoId: string, track: KaraokeTrack): Promise<KaraokeTrack>
+  exportLyricVideo(videoId: string, frames: LyricFrame[], mix?: KaraokeMix): Promise<{ saved: boolean; path?: string }>
   exportStem(videoId: string, stem: string): Promise<{ saved: boolean; path?: string }>
   exportAllStems(videoId: string): Promise<{ saved: boolean; path?: string; count?: number }>
   searchYouTube(query: string): Promise<SearchResult[]>

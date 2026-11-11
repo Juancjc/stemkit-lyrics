@@ -20,6 +20,10 @@ export function loadSettings(): AppSettings {
 export function saveSettings(patch: Partial<AppSettings>): AppSettings {
   const merged = { ...loadSettings(), ...patch }
   const next: AppSettings = {
+    language: merged.language === 'pt-BR' ? 'pt-BR' : 'en',
+    karaokeHighlight: ['cyan', 'pink'].includes(merged.karaokeHighlight) ? merged.karaokeHighlight : 'yellow',
+    karaokeHighlightMode: merged.karaokeHighlightMode === 'progressive' ? 'progressive' : 'word',
+    karaokeTextSize: merged.karaokeTextSize === 'large' ? 'large' : 'standard',
     shifts: merged.shifts === 2 ? 2 : 1,
     htdemucsFt: !!merged.htdemucsFt,
     roformerVocals: !!merged.roformerVocals,

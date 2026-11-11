@@ -1,3 +1,4 @@
+import { useTranslate } from '../lib/i18n'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   MODEL_DEFAULT,
@@ -40,6 +41,7 @@ export function Home({
   onSelect,
   onOpenSettings
 }: Props): React.ReactElement {
+  const t = useTranslate()
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<Set<StemId>>(new Set<StemId>(DEFAULT_STEMS as StemId[]))
   const [results, setResults] = useState<SearchResult[]>([])
@@ -180,14 +182,14 @@ export function Home({
             value={query}
             onChange={(e) => handleInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submit()}
-            placeholder="Search YouTube or paste a link…"
+            placeholder={t('Search YouTube or paste a link…')}
             spellCheck={false}
             className="no-drag flex-1 glass rounded-xl px-4 py-3 text-sm outline-none placeholder:text-white/25 focus:ring-2 focus:ring-violet-400/60 transition-shadow"
           />
           <button
             onClick={() => void pickAndStart()}
             disabled={selected.size === 0}
-            title="Split a local audio file (mp3, wav, flac…)"
+            title={t('Split a local audio file (mp3, wav, flac…)')}
             className="no-drag glass rounded-xl w-[52px] flex items-center justify-center text-white/45 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40"
           >
             <FolderIcon className="w-[18px] h-[18px] pointer-events-none" />
@@ -214,7 +216,7 @@ export function Home({
               </span>
               <button
                 onClick={onOpenSettings}
-                title="Settings"
+                title={t('Settings')}
                 className="no-drag w-5 h-5 rounded-md hover:bg-white/10 text-white/35 hover:text-white flex items-center justify-center transition-colors"
               >
                 <GearIcon className="w-3 h-3" />
@@ -320,7 +322,7 @@ export function Home({
                           <span className="w-3 h-3 rounded-full border-2 border-white/20 border-t-violet-300 animate-spin" />
                         </span>
                       ) : failed ? (
-                        <span className="shrink-0 pr-2 text-[11px] font-medium text-rose-300">failed — view</span>
+                        <span className="shrink-0 pr-2 text-[11px] font-medium text-rose-300">{t('failed — view')}</span>
                       ) : saved ? (
                         <span className="shrink-0 pr-2 text-[11px] font-medium text-emerald-300 group-hover:text-emerald-200 transition-colors">
                           ✓ In library

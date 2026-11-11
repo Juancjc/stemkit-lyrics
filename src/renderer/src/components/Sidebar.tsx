@@ -1,3 +1,4 @@
+import { useTranslate } from '../lib/i18n'
 import type { Song } from '../../../shared/types'
 import { fmtTime } from '../lib/format'
 import { SongThumb } from '../lib/thumbs'
@@ -30,14 +31,15 @@ export function Sidebar({
   onInstallUpdate,
   onOpenSettings
 }: Props): React.ReactElement {
+  const t = useTranslate()
   return (
     <aside className="w-[264px] shrink-0 h-full flex flex-col border-r border-white/[0.07] bg-black/20">
       <div className="drag-region h-14 shrink-0 flex items-center gap-2.5 pl-[80px] pr-4">
         <LogoMark />
-        <span className="font-semibold tracking-tight text-[15px]">StemKit</span>
+        <span className="font-semibold tracking-tight text-[15px]">{t('StemKit')}</span>
         <button
           onClick={onOpenSettings}
-          title="Settings"
+          title={t('Settings')}
           className="no-drag ml-auto w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-colors"
         >
           <GearIcon className="w-3.5 h-3.5" />
@@ -52,7 +54,7 @@ export function Sidebar({
           {songs.length > 0 && (
             <button
               onClick={onClearAll}
-              title="Remove every song and its stems"
+              title={t('Remove every song and its stems')}
               className="no-drag w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 text-white/40 hover:text-rose-300 flex items-center justify-center transition-colors"
             >
               <TrashIcon className="w-3.5 h-3.5" />
@@ -60,7 +62,7 @@ export function Sidebar({
           )}
           <button
             onClick={onAdd}
-            title="Add song"
+            title={t('Add song')}
             className="no-drag w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-colors"
           >
             <PlusIcon className="w-3.5 h-3.5" />
@@ -123,7 +125,7 @@ export function Sidebar({
               {!working && (
                 <span
                   role="button"
-                  title="Remove"
+                  title={t('Remove')}
                   onClick={(e) => {
                     e.stopPropagation()
                     onDelete(song.videoId)
@@ -142,16 +144,16 @@ export function Sidebar({
         {update?.status === 'downloaded' && (
           <button
             onClick={onInstallUpdate}
-            title="Install the downloaded update"
+            title={t('Install the downloaded update')}
             className="no-drag w-full flex items-center justify-between rounded-lg bg-emerald-400/15 border border-emerald-400/30 px-3 py-2 text-[12px] text-emerald-200 hover:bg-emerald-400/25 transition-colors"
           >
             <span>v{update.version} ready</span>
-            <span className="font-semibold">Restart ↻</span>
+            <span className="font-semibold">{t('Restart ↻')}</span>
           </button>
         )}
         {update?.status === 'progress' && (
           <div className="flex items-center justify-between text-[11px] text-white/40 px-1">
-            <span>Downloading update…</span>
+            <span>{t('Downloading update…')}</span>
             <span className="font-mono">{update.pct}%</span>
           </div>
         )}
