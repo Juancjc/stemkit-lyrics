@@ -84,3 +84,44 @@ export class AiGatewayError extends Error {
     this.cause = cause
   }
 }
+
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
+
+export async function sendChatCompletion(
+  config: NineRouterConfig,
+  messages: ChatMessage[]
+): Promise<{ content: string; raw: unknown }> {
+  let res: Response
+  try {
+    res = await fetch(`${config.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: { 'x-api-key': config.apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: config.model, messages, stream: false }),
+      signal: AbortSignal.timeout(config.timeoutMs)
+    })
+  } catch (err) {
+    const name = err instanceof Error ? err.name : ''
+    if (name === 'TimeoutError' || name === 'AbortError') {
+      throw new AiGatewayError('timeout', friendlyMessage('timeout'), undefined, err)
+    }
+    throw new AiGatewayError('network', friendlyMessage('network'), undefined, err)
+  }
+
+  const raw: unknown = await res.json().catch(() => null)
+
+  if (!res.ok) {
+    const kind = classifyHttpStatus(res.status)
+    throw new AiGatewayError(kind, friendlyMessage(kind, res.status), res.status, raw)
+  }
+
+  const content = (raw as { choices?: Array<{ message?: { content?: unknown } }> })?.choices?.[0]?.message
+    ?.content
+  if (typeof content !== 'string') {
+    throw new AiGatewayError('unknown', friendlyMessage('unknown', res.status), res.status, raw)
+  }
+
+  return { content, raw }
+}
