@@ -41,7 +41,8 @@ import { getThumb, clearThumbMemo } from './thumbs'
 import { maybePing } from './telemetry'
 import { loadLyrics, saveLyrics, clearLyrics, searchLyrics } from './lyrics'
 import { loadBackground, pickBackground, clearBackground } from './background'
-import type { LyricsTrack } from '../shared/types'
+import { exportLyricVideo } from './lyric-video'
+import type { LyricFrame, LyricsTrack } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
 let staticServer: Server | null = null
@@ -328,6 +329,19 @@ app.whenReady().then(async () => {
   })
 
   ipcMain.handle('search:youtube', (_e, query: string) => searchYouTube(query))
+  ipcMain.handle('lyrics:export-video', async (_e, videoId: string, frames: LyricFrame[]) => {
+    const song = loadSongs().find(s => s.videoId === videoId)
+    if (!song) throw new Error('Unknown song')
+    const background = loadBackground(videoId)
+    const result = await dialog.showSaveDialog({
+      title: 'Save video with lyrics',
+      defaultPath: sanitizeName(song.title) + ' - lyrics.mp4',
+      filters: [{ name: 'MP4 video', extensions: ['mp4'] }]
+    })
+    if (result.canceled || !result.filePath) return { saved: false }
+    await exportLyricVideo(song, frames, background, requireExportFfmpeg(), result.filePath)
+    return { saved: true, path: result.filePath }
+  })
   ipcMain.handle('lyrics:get', (_e, videoId: string) => loadLyrics(videoId))
   ipcMain.handle('lyrics:search', (_e, query: string) => searchLyrics(query))
   ipcMain.handle('lyrics:set', (_e, videoId: string, track: LyricsTrack) => saveLyrics(videoId, track))

@@ -7,7 +7,9 @@ import { SongThumb } from '../lib/thumbs'
 import { YouTubeHost, type YTState } from '../lib/youtube'
 import { StemLane } from './StemLane'
 import { Transport, type PresetId } from './Transport'
-import { DownloadIcon } from './Icons'
+import { DownloadIcon, MicIcon } from './Icons'
+import { parseLrc } from '../lib/lrc'
+import { lyricFrames } from '../lib/lyric-frames'
 import { Lyrics } from './Lyrics'
 import { TheaterMode } from './TheaterMode'
 
@@ -91,6 +93,8 @@ export function Player({ song, settings }: Props): React.ReactElement {
   const [master, setMaster] = useState(0.9)
   const [preset, setPreset] = useState<PresetId | 'custom'>('all')
   const [showLyrics, setShowLyrics] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [exportMessage, setExportMessage] = useState('')
   const [theaterOpen, setTheaterOpen] = useState(false)
 
   const stemMeta = useMemo(() => buildStemMeta(Object.keys(buffers) as StemId[]), [buffers])
@@ -327,6 +331,26 @@ export function Player({ song, settings }: Props): React.ReactElement {
     [song.videoId]
   )
 
+  const saveVideo = async (): Promise<void> => {
+    setExporting(true)
+    setExportMessage('')
+    try {
+      const cached = await window.stemkit.getLyrics(song.videoId)
+      const lines = parseLrc(cached?.syncedLyrics ?? '')
+      if (!lines.length) {
+        setShowLyrics(true)
+        setExportMessage('Choose synchronized lyrics, then download the video.')
+        return
+      }
+      const result = await window.stemkit.exportLyricVideo(song.videoId, lyricFrames(lines))
+      if (result.saved) setExportMessage('Saved to ' + result.path)
+    } catch (err) {
+      setExportMessage(err instanceof Error ? err.message : String(err))
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const exportAllStems = useCallback((): void => {
     void window.stemkit.exportAllStems(song.videoId)
   }, [song.videoId])
@@ -407,16 +431,28 @@ export function Player({ song, settings }: Props): React.ReactElement {
   return (
     <div className="h-full flex flex-col">
       <header className="drag-region h-14 shrink-0 flex items-center justify-between px-6">
-        <h2 className="text-sm font-semibold truncate">{song.title}</h2>
+        <h2 className="min-w-0 flex-1 text-sm font-semibold truncate">{song.title}</h2>
         <button
           onClick={() => setShowLyrics((v) => !v)}
-          className={`no-drag shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-colors ${
-            showLyrics ? 'bg-white/10 text-white' : 'text-white/45 hover:text-white hover:bg-white/10'
+          aria-expanded={showLyrics}
+          className={`no-drag ml-3 inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-5 text-base font-semibold focus-visible:outline-2 focus-visible:outline-white transition-colors ${
+            showLyrics ? 'bg-violet-200 text-violet-950' : 'bg-violet-700 text-white hover:bg-violet-600'
           }`}
         >
+          <MicIcon className="w-5 h-5" />
           Lyrics
         </button>
+        <button
+          onClick={() => void saveVideo()}
+          disabled={exporting}
+          title="Download video with lyrics"
+          className="no-drag ml-2 inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-white px-4 text-base font-semibold text-black hover:bg-violet-100 focus-visible:outline-2 focus-visible:outline-violet-400 disabled:opacity-60"
+        >
+          <DownloadIcon className="w-5 h-5" />
+          {exporting ? 'Exporting…' : 'Download video'}
+        </button>
       </header>
+      {exportMessage && <p role="status" className="px-6 pb-2 break-words text-sm text-white/80">{exportMessage}</p>}
 
       <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
         <div className="max-w-6xl mx-auto">
@@ -507,6 +543,8 @@ export function Player({ song, settings }: Props): React.ReactElement {
           {showLyrics && (
             <div className="mt-4">
               <Lyrics
+                exporting={exporting}
+                onSaveVideo={saveVideo}
                 videoId={song.videoId}
                 title={song.title}
                 getPosition={getPosition}

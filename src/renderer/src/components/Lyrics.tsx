@@ -2,19 +2,21 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CachedLyrics, LyricsTrack } from '../../../shared/types'
 import { parseLrc, activeLrcIndex } from '../lib/lrc'
 import { fmtTime } from '../lib/format'
-import { ExpandIcon } from './Icons'
+import { DownloadIcon, ExpandIcon } from './Icons'
 
 interface Props {
   videoId: string
   title: string
   getPosition: () => number
   onSeek: (seconds: number) => void
+  exporting: boolean
+  onSaveVideo: () => void
   onOpenTheater: () => void
 }
 
 type Status = 'loading' | 'found' | 'not-found' | 'error'
 
-export function Lyrics({ videoId, title, getPosition, onSeek, onOpenTheater }: Props): React.ReactElement {
+export function Lyrics({ videoId, title, getPosition, onSeek, onOpenTheater, exporting, onSaveVideo }: Props): React.ReactElement {
   const [status, setStatus] = useState<Status>('loading')
   const [cached, setCached] = useState<CachedLyrics | null>(null)
   const [query, setQuery] = useState(title)
@@ -109,13 +111,23 @@ export function Lyrics({ videoId, title, getPosition, onSeek, onOpenTheater }: P
         </span>
         <span className="flex items-center gap-2">
           {status === 'found' && lines.length > 0 && (
-            <button
-              onClick={onOpenTheater}
-              title="Open Theater Mode"
-              className="no-drag w-6 h-6 rounded-md hover:bg-white/10 text-white/40 hover:text-white flex items-center justify-center transition-colors"
-            >
-              <ExpandIcon className="w-3.5 h-3.5" />
-            </button>
+            <>
+              <button
+                disabled={exporting}
+                onClick={onSaveVideo}
+                className="no-drag inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-black hover:bg-violet-100 disabled:opacity-60"
+              >
+                <DownloadIcon className="w-4 h-4" />
+                {exporting ? 'Exporting…' : 'Save video with lyrics'}
+              </button>
+              <button
+                onClick={onOpenTheater}
+                title="Open Theater Mode"
+                className="no-drag w-8 h-8 rounded-md hover:bg-white/10 text-white/70 hover:text-white flex items-center justify-center transition-colors"
+              >
+                <ExpandIcon className="w-4 h-4" />
+              </button>
+            </>
           )}
           {status === 'found' && (
             <button
@@ -128,6 +140,9 @@ export function Lyrics({ videoId, title, getPosition, onSeek, onOpenTheater }: P
         </span>
       </div>
 
+      {status === 'found' && !cached?.instrumental && !lines.length && (
+        <p className="mb-3 text-sm text-white/65">Choose synchronized lyrics to save a video.</p>
+      )}
       {status === 'loading' && (
         <div className="space-y-2">
           {[...Array(3)].map((_, i) => (

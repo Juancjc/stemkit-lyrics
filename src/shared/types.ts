@@ -148,6 +148,11 @@ export interface UpdateEvent {
   pct?: number
 }
 
+export interface LyricFrame {
+  time: number
+  png: Uint8Array
+}
+
 export interface StemKitApi {
   envStatus(): Promise<EnvStatus>
   envBootstrap(): Promise<boolean>
@@ -158,6 +163,7 @@ export interface StemKitApi {
   getBuffers(videoId: string): Promise<Record<string, Uint8Array>>
   getStemPan(videoId: string): Promise<StemPanMap>
   setStemPan(videoId: string, pans: StemPanMap): Promise<void>
+  exportLyricVideo(videoId: string, frames: LyricFrame[]): Promise<{ saved: boolean; path?: string }>
   exportStem(videoId: string, stem: string): Promise<{ saved: boolean; path?: string }>
   exportAllStems(videoId: string): Promise<{ saved: boolean; path?: string; count?: number }>
   searchYouTube(query: string): Promise<SearchResult[]>

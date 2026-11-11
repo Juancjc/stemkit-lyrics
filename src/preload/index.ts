@@ -19,6 +19,7 @@ const api: StemKitApi = {
   getBuffers: (videoId) => ipcRenderer.invoke('song:buffers', videoId),
   getStemPan: (videoId) => ipcRenderer.invoke('song:pan:get', videoId),
   setStemPan: (videoId, pans) => ipcRenderer.invoke('song:pan:set', videoId, pans),
+  exportLyricVideo: (id, frames) => ipcRenderer.invoke('lyrics:export-video', id, frames),
   exportStem: (videoId, stem) => ipcRenderer.invoke('stem:export', videoId, stem),
   exportAllStems: (videoId) => ipcRenderer.invoke('stems:export-all', videoId),
   searchYouTube: (query) => ipcRenderer.invoke('search:youtube', query),
