@@ -71,6 +71,7 @@ Screenshots land in `%TEMP%/stemkit-shots` (Windows) or `/tmp/stemkit-shots`
 | `windows` | list open windows |
 | `open-song <title substring>` | click a library entry in the sidebar by title |
 | `toggle-lyrics` | click the "Lyrics" header button in the Player |
+| `toggle-theater` | click the "Open Theater Mode" button in the Lyrics panel (needs `toggle-lyrics` first, and cached synced lyrics) |
 | `toggle-play` | click the round transport play/pause button |
 | `quit` | close the app, exit the driver |
 
@@ -101,6 +102,9 @@ npm run dev   # opens a real window; Ctrl-C to quit
   the `div` with class `max-h-60`, and the synced-lyrics line list is the
   `div` with class `max-h-72` (each line a direct child `div`; the active
   line carries `font-semibold`).
+- **Theater Mode's close button has no exact-text match** — it's matched by
+  `title` (`"Open Theater Mode"` / `"Close Theater Mode"`), same approach as
+  `toggle-play`, since it's an icon-only button.
 
 ## Troubleshooting
 

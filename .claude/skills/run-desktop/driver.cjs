@@ -148,6 +148,21 @@ const COMMANDS = {
     await page.waitForTimeout(800)
   },
 
+  // clicks the "Open Theater Mode" icon button inside the Lyrics panel
+  // (only present once a song has cached synced lyrics — run toggle-lyrics
+  // first)
+  async 'toggle-theater'() {
+    if (!page) return console.log('ERROR: launch first')
+    const r = await page.evaluate(() => {
+      const btn = [...document.querySelectorAll('button')].find((b) => b.title === 'Open Theater Mode')
+      if (!btn) return 'NOT_FOUND'
+      btn.click()
+      return 'OK'
+    })
+    console.log('toggle-theater →', r)
+    await page.waitForTimeout(800)
+  },
+
   // clicks the round white Transport play/pause button (no aria-label/title
   // is set on it, so match by its distinctive class pair instead)
   async 'toggle-play'() {
