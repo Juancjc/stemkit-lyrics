@@ -6,9 +6,9 @@ Split any YouTube song into isolated stems — **vocals, drums, bass, guitar, pi
 
 Search YouTube or paste a link, pick the instruments you want, and play the result like a mini DAW: the video on one side, every stem on its own fader, all perfectly in sync. Karaoke, acapellas and instrumentals are one click away.
 
-Everything runs locally — no accounts, no API keys. Your songs, searches and audio never leave your machine. The app sends a single tiny anonymous ping per install (a random install id + version/OS) so I can count how many people use it — see [Privacy](#privacy) for details.
+Stem separation and playback run on your machine. The optional karaoke studio uses 9Router to prepare word timings once, then saves them with the song for offline playback. [Privacy](#privacy) covers what StemKit sends.
 
-![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-black) ![local](https://img.shields.io/badge/100%25-local-emerald)
+![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-black) ![local separation](https://img.shields.io/badge/stem%20separation-local-emerald)
 
 <p align="center">
   <img src="docs/stemkit.png" alt="StemKit splitting Queen's Bohemian Rhapsody into six stems — video player, presets and color-coded waveform lanes" width="100%" />
@@ -16,18 +16,30 @@ Everything runs locally — no accounts, no API keys. Your songs, searches and a
 
 ## Features
 
-- Built-in YouTube search, or paste a link
+- Search YouTube, paste a link or drag in a local audio file
 - Choose your instruments individually; the right separation engine is picked for you
 - Tight audio/video sync with instant, artifact-free seeking
 - One-click presets: **All · Karaoke · Acapella · Drums + Bass**
-- Per-stem mute/solo/volume, waveforms with click-to-seek
+- Per-stem mute, solo, volume and stereo pan, with click-to-seek waveforms
 - Parallel background splitting with live progress
-- Export any stem (or all) as WAV
-- Fully offline after setup — separation runs on Mac (MPS), NVIDIA GPUs (CUDA), AMD GPUs on Linux (ROCm, experimental) or CPU; ffmpeg included
+- Export individual stems or the whole set as WAV or AAC
+- Offline separation after setup on Mac (MPS), NVIDIA GPUs (CUDA), AMD GPUs on Linux (ROCm, experimental) or CPU, with ffmpeg included
+
+## Karaoke studio
+
+Open a song, select **Karaoke studio**, then **Choose lyrics** to select a synchronized transcript. Click **Prepare karaoke** to estimate when each word starts. The **9Router activity** window shows each batch as it goes out and lets you expand the request and reply. Preparing a new track requires a configured gateway. [9Router setup](docs/9router.md)
+
+Play the song to preview the highlights. If a word comes in early or late, expand **Lyrics and timing**, select its line and adjust the start time. Edits are saved with the song. To export a karaoke video, choose **Instrumental** or **Current mix** and click **Let's download karaoke**.
+
+![Karaoke studio showing a highlighted word, instrumental export and four editable lyric lines](docs/karaoke-studio.png)
+
+Select **Time to sing** to mute the vocals and open the lyrics in theater mode. Turn on **Audio-reactive background** for a ring of colored bars that responds to the frequencies in your live mix. You can toggle the effect while singing, pause or resume playback, restart the song, or leave with **Close** or **Esc**.
+
+![Live karaoke with the audio-reactive spectrum around the lyrics and visible Pause, Restart song and Close controls](docs/karaoke-visualizer.png)
 
 ## Download
 
-Grab installers from [Releases](https://github.com/danvelope/stemkit/releases):
+Grab installers from [Releases](https://github.com/Juancjc/stemkit-lyrics/releases):
 - **macOS**: `StemKit-x.y.z-mac-arm64.dmg` (Apple Silicon) or `StemKit-x.y.z-mac-x64.dmg` (Intel)
 - **Windows**: `StemKit-Setup-x.y.z.exe` (installer) or portable `.zip`
 - **Linux** (x64): `StemKit-x.y.z-linux-x86_64.AppImage` (portable, self-updating) or `StemKit-x.y.z-linux-amd64.deb`
@@ -112,10 +124,11 @@ video iframe (muted) + Web Audio stem playback · master clock = the audio itsel
 
 ## Privacy
 
-- **Never leaves your machine:** the videos you download, the songs you split, your library, your searches and your audio — none of it is uploaded anywhere. All separation runs locally.
+- **Audio and library.** Stem separation, mixing and the live visualizer process audio locally. YouTube searches and online lyric lookups contact their respective services.
+- **Optional karaoke preparation.** 9Router receives the selected lyric words, line durations, known word timings and available vocal silence intervals. The vocal recording stays on your machine. Saved timings can be played and edited offline.
 - **Anonymous install count:** the first time the app runs it sends one small POST to a Cloudflare Worker (`stemkit-stats.danielravina.workers.dev`) — once per install, ever. It contains a **random install id** (generated locally, stored in the app's settings folder), the app version, OS and architecture. No IP-address-based profiles are built, no cookies, no identifiers tied to you, no analytics SDKs. If the first attempt fails (e.g. you're offline), it simply retries on a later launch.
 - **What it's for:** counting installs and active usage (the same stats you'd get from GitHub release downloads, minus auto-update noise). The counter code is in [`telemetry-worker/`](telemetry-worker) — inspectable like the rest of the app.
-- **Fully offline builds:** if you'd rather send nothing, build from source and remove `src/main/telemetry.ts` (or block the worker domain in your firewall) — everything else works identically offline.
+- **Disabling the install ping.** Build from source and remove `src/main/telemetry.ts`, or block the worker domain in your firewall.
 
 ## Layout
 

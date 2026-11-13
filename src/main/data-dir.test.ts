@@ -14,7 +14,7 @@ test('falls back when the override is blank', () => {
 })
 
 test('uses the override folder when set', () => {
-  assert.equal(resolveDataDir({ STEMKIT_DATA_DIR: '/mnt/big/stemkit' }, DEFAULT), '/mnt/big/stemkit')
+  assert.equal(resolveDataDir({ STEMKIT_DATA_DIR: '/mnt/big/stemkit' }, DEFAULT), resolve('/mnt/big/stemkit'))
 })
 
 test('resolves a relative override to an absolute path', () => {

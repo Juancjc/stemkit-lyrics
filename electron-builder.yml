@@ -9,8 +9,8 @@ asar: true
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 publish:
   provider: github
-  owner: danielravina
-  repo: stemkit
+  owner: Juancjc
+  repo: stemkit-lyrics
 extraResources:
   - from: python
     to: python

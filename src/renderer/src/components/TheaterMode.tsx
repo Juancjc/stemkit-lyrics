@@ -1,23 +1,31 @@
 import { useTranslate } from '../lib/i18n'
+import { engine } from '../lib/engine'
 import { useEffect, useRef, useState } from 'react'
 import type { LrcLine } from '../lib/lrc'
 import { parseLrc, activeLrcIndex } from '../lib/lrc'
 import { FALLBACK_PALETTE, extractPalette } from '../lib/palette'
 import { karaokeColor, karaokeHighlighted } from '../lib/karaoke-style'
 import { useKaraokeCue } from '../lib/karaoke-position'
-import { XIcon } from './Icons'
+import { PauseIcon, PlayIcon, XIcon } from './Icons'
 import type { KaraokeStyle, KaraokeTrack, SongBackground } from '../../../shared/types'
 
 interface Props {
+  visualizer: boolean
+  onVisualizerChange: (enabled: boolean) => void
   videoId: string
   getPosition: () => number
   onClose: () => void
+  playing: boolean
+  playbackReady: boolean
+  onTogglePlay: () => void
+  onRestart: () => void
   karaokeStyle: KaraokeStyle
   karaoke?: KaraokeTrack | null
   showVideo: boolean
 }
 
-export function TheaterMode({ videoId, getPosition, onClose, showVideo, karaoke, karaokeStyle }: Props): React.ReactElement {
+export function TheaterMode({ videoId, getPosition, onClose, showVideo, karaoke, karaokeStyle,
+  playing, playbackReady, onTogglePlay, onRestart, visualizer, onVisualizerChange }: Props): React.ReactElement {
   const t = useTranslate()
   const [lines, setLines] = useState<LrcLine[]>([])
   const [activeIndex, setActiveIndex] = useState(-1)
@@ -27,6 +35,8 @@ export function TheaterMode({ videoId, getPosition, onClose, showVideo, karaoke,
   const paletteRef = useRef<string[]>(FALLBACK_PALETTE)
   const [background, setBackground] = useState<SongBackground | null>(null)
   const [bgFailed, setBgFailed] = useState(false)
+  const reactive = Boolean(karaoke && visualizer)
+  const customBackground = Boolean(background && !bgFailed && !reactive)
 
   // Theater Mode fetches and parses its own copy of the cached synced
   // lyrics rather than receiving it from the Lyrics panel, so the two
@@ -108,6 +118,7 @@ export function TheaterMode({ videoId, getPosition, onClose, showVideo, karaoke,
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
+    const spectrum = reactive ? engine.observeSpectrum() : null
     let raf = 0
     const draw = (time: number): void => {
       const w = canvas.clientWidth
@@ -122,7 +133,8 @@ export function TheaterMode({ videoId, getPosition, onClose, showVideo, karaoke,
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
         ctx.fillStyle = '#0b0b10'
         ctx.fillRect(0, 0, w, h)
-        const t = time / 1000
+        const bins = spectrum?.read()
+        const t = bins ? engine.expected() : time / 1000
         const colors = paletteRef.current
         colors.forEach((color, i) => {
           const angle = t * 0.15 + (i * (Math.PI * 2)) / colors.length
@@ -135,18 +147,42 @@ export function TheaterMode({ videoId, getPosition, onClose, showVideo, karaoke,
           ctx.fillStyle = grad
           ctx.fillRect(0, 0, w, h)
         })
+        if (bins) {
+          // Mirror the spectrum around a ring, with logarithmic spacing for the bass.
+          const size = Math.min(w, h)
+          const ring = size * 0.31
+          ctx.lineWidth = Math.max(2, size / 210)
+          ctx.lineCap = 'round'
+          for (let i = 0; i < 160; i++) {
+            const fraction = Math.min(i, 160 - i) / 80
+            const bin = Math.round(2 * Math.pow(bins.length / 4, fraction))
+            const amplitude = bins[bin] / 255
+            const angle = i * Math.PI / 80 - Math.PI / 2
+            const x = Math.cos(angle)
+            const y = Math.sin(angle)
+            const outer = ring + size * (0.008 + 0.17 * amplitude * amplitude)
+            ctx.strokeStyle = `hsl(${185 + fraction * 125} 90% ${45 + amplitude * 25}%)`
+            ctx.beginPath()
+            ctx.moveTo(w / 2 + x * ring, h / 2 + y * ring)
+            ctx.lineTo(w / 2 + x * outer, h / 2 + y * outer)
+            ctx.stroke()
+          }
+        }
       }
       raf = requestAnimationFrame(draw)
     }
     raf = requestAnimationFrame(draw)
-    return () => cancelAnimationFrame(raf)
-  }, [showVideo])
+    return () => {
+      cancelAnimationFrame(raf)
+      spectrum?.disconnect()
+    }
+  }, [showVideo, customBackground, reactive])
 
   const text = activeIndex >= 0 ? (lines[activeIndex]?.text ?? '') : ''
 
   return (
     <div className="fixed inset-0 z-[60]">
-      {background && !bgFailed ? (
+      {background && customBackground ? (
         background.kind === 'video' ? (
           <video
             key={background.path}
@@ -166,10 +202,10 @@ export function TheaterMode({ videoId, getPosition, onClose, showVideo, karaoke,
           />
         )
       ) : (
-        !showVideo && <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+        (reactive || !showVideo) && <canvas aria-hidden="true" ref={canvasRef} className="absolute inset-0 w-full h-full" />
       )}
       <div className="absolute inset-0 bg-black/30" />
-      <div className="absolute inset-0 flex items-center justify-center px-16">
+      <div className="absolute inset-x-0 top-20 bottom-24 flex items-center justify-center px-16">
         <p
           style={karaoke && karaokeStyle.karaokeTextSize === 'large' ? { fontSize: '4rem' } : undefined}
           key={karaoke ? cue.line : activeIndex}
@@ -182,7 +218,22 @@ export function TheaterMode({ videoId, getPosition, onClose, showVideo, karaoke,
           )) : text}
         </p>
       </div>
-      <div className="no-drag absolute bottom-6 left-6 flex items-center gap-2 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity">
+      <div className="no-drag absolute bottom-6 inset-x-4 flex flex-wrap items-center justify-center gap-3">
+        {karaoke && <label className="flex min-h-12 cursor-pointer items-center gap-2 rounded-full bg-zinc-900 px-4 text-sm text-white">
+          <input type="checkbox" checked={visualizer} onChange={event => onVisualizerChange(event.target.checked)} />
+          {t('Audio-reactive background')}
+        </label>}
+        <button onClick={onTogglePlay} disabled={!playbackReady}
+          className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white px-5 font-semibold text-zinc-900 hover:bg-violet-100 disabled:opacity-50">
+          {playing ? <PauseIcon /> : <PlayIcon />}
+          {t(playing ? 'Pause' : 'Play')}
+        </button>
+        <button onClick={onRestart} disabled={!playbackReady}
+          className="min-h-12 rounded-full border border-white/30 bg-zinc-900 px-5 font-semibold text-white hover:bg-zinc-700 disabled:opacity-50">
+          {t('Restart song')}
+        </button>
+      </div>
+      <div className="no-drag absolute top-6 left-6 flex items-center gap-2 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity">
         <button
           onClick={() => void pickBg()}
           className="rounded-full bg-black/40 hover:bg-black/60 text-white/70 hover:text-white text-[11px] font-medium px-3 py-1.5 transition-colors"
@@ -201,9 +252,10 @@ export function TheaterMode({ videoId, getPosition, onClose, showVideo, karaoke,
       <button
         onClick={onClose}
         title={t('Close Theater Mode')}
-        className="no-drag absolute top-6 right-6 w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white/70 hover:text-white flex items-center justify-center transition-colors"
+        className="no-drag absolute top-6 right-6 flex min-h-12 items-center gap-2 rounded-full bg-white px-5 font-semibold text-zinc-900 shadow-lg hover:bg-violet-100"
       >
         <XIcon className="w-5 h-5" />
+        {t('Close')}
       </button>
     </div>
   )

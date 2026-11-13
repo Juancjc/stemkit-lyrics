@@ -77,6 +77,22 @@ export class StemEngine {
     void this.ensureCtx().resume()
   }
 
+  observeSpectrum() {
+    const analyser = this.ensureCtx().createAnalyser()
+    analyser.fftSize = 2048
+    analyser.smoothingTimeConstant = 0.8
+    const master = this.master!
+    master.connect(analyser)
+    const bins = new Uint8Array(analyser.frequencyBinCount)
+    return {
+      read() {
+        analyser.getByteFrequencyData(bins)
+        return bins
+      },
+      disconnect: () => master.disconnect(analyser)
+    }
+  }
+
   async decode(payload: Record<string, Uint8Array>): Promise<void> {
     const buffers = await decodePayload(payload)
     this.buffers = buffers

@@ -331,7 +331,9 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('search:youtube', (_e, query: string) => searchYouTube(query))
   ipcMain.handle('karaoke:get', (_e, id: string) => getKaraoke(id))
-  ipcMain.handle('karaoke:prepare', (_e, id: string) => prepareKaraoke(id))
+  ipcMain.handle('karaoke:prepare', (event, id: string) => prepareKaraoke(id, activity => {
+    if (!event.sender.isDestroyed()) event.sender.send('karaoke:activity', { videoId: id, activity })
+  }))
   ipcMain.handle('karaoke:save', (_e, id: string, track: KaraokeTrack) => saveKaraoke(id, track))
   ipcMain.handle('lyrics:export-video', async (_e, videoId: string, frames: LyricFrame[], mix?: KaraokeMix) => {
     const song = loadSongs().find(s => s.videoId === videoId)

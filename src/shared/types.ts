@@ -158,6 +158,10 @@ export interface UpdateEvent {
   pct?: number
 }
 
+export type KaraokeActivity =
+  | { phase: 'analyzing' | 'cached' }
+  | { phase: 'request' | 'response'; batch: number; total: number; text: string }
+
 export interface KaraokeTrack {
   sourceHash?: string
   lines: {
@@ -190,6 +194,7 @@ export interface StemKitApi {
   setStemPan(videoId: string, pans: StemPanMap): Promise<void>
   getKaraoke(videoId: string): Promise<KaraokeTrack | null>
   prepareKaraoke(videoId: string): Promise<KaraokeTrack>
+  onKaraokeActivity(cb: (event: { videoId: string; activity: KaraokeActivity }) => void): () => void
   saveKaraoke(videoId: string, track: KaraokeTrack): Promise<KaraokeTrack>
   exportLyricVideo(videoId: string, frames: LyricFrame[], mix?: KaraokeMix): Promise<{ saved: boolean; path?: string }>
   exportStem(videoId: string, stem: string): Promise<{ saved: boolean; path?: string }>

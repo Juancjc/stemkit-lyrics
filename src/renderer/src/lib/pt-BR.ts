@@ -126,6 +126,7 @@ export const ptBR: Record<string, string> = {
   "{direction} {seconds} seconds (Shift: {shift})": "{direction} {seconds} segundos (Shift: {shift})",
   "Play": "Reproduzir",
   "Pause": "Pausar",
+  "Restart song": "Reiniciar música",
   "Master volume": "Volume geral",
   "Mute": "Silenciar",
   "Solo": "Isolar",

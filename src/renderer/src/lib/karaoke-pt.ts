@@ -1,4 +1,17 @@
 export const karaokePt: Record<string, string> = {
+  'Audio-reactive background': 'Fundo que reage à música',
+  'View 9Router activity': 'Ver atividade do 9Router',
+  'Restart StemKit to load the updated karaoke integration.': 'Reinicie o StemKit para carregar a integração atualizada do karaokê.',
+  '9Router activity': 'Atividade do 9Router',
+  'Close': 'Fechar',
+  'Loaded saved karaoke.': 'Karaokê carregado da música, sem consultar o 9Router.',
+  'Karaoke timings saved.': 'Marcações de tempo salvas na música.',
+  'Waiting for 9Router to reply…': 'Aguardando resposta do 9Router…',
+  'Checking word timings…': 'Conferindo as marcações de tempo…',
+  'Analyzing vocal pauses…': 'Analisando as pausas do vocal…',
+  'Loading synchronized lyrics…': 'Carregando a letra sincronizada…',
+  'Request · batch {batch} of {total}': 'Solicitação · lote {batch} de {total}',
+  'Reply · batch {batch} of {total}': 'Resposta · lote {batch} de {total}',
   'Karaoke': 'Karaokê',
   'Karaoke preview': 'Prévia do karaokê',
   'Edit line {n}': 'Editar verso {n}',
@@ -61,5 +74,9 @@ export const karaokePt: Record<string, string> = {
   '9Router or the upstream provider is unavailable ({status}) — try again later.':
     'O 9Router ou o provedor está indisponível ({status}). Tente novamente mais tarde.',
   'Unexpected response from 9Router (status {status}).': 'Resposta inesperada do 9Router (código {status}).',
+  '9Router returned an invalid JSON response. Check NINE_ROUTER_BASE_URL.':
+    'O 9Router retornou uma resposta JSON inválida. Verifique NINE_ROUTER_BASE_URL.',
+  '9Router returned no assistant text. Try preparing karaoke again.':
+    'O 9Router retornou uma resposta sem texto. Tente preparar o karaokê novamente.',
   'Unexpected response from 9Router.': 'Resposta inesperada do 9Router.'
 }

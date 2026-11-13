@@ -95,6 +95,7 @@ export async function sendChatCompletion(
   messages: ChatMessage[]
 ): Promise<{ content: string; raw: unknown }> {
   let res: Response
+  let raw: unknown
   try {
     res = await fetch(`${config.baseUrl}/chat/completions`, {
       method: 'POST',
@@ -102,7 +103,19 @@ export async function sendChatCompletion(
       body: JSON.stringify({ model: config.model, messages, stream: false }),
       signal: AbortSignal.timeout(config.timeoutMs)
     })
+    if (!res.ok) {
+      const kind = classifyHttpStatus(res.status)
+      const detail: unknown = await res.json().catch(() => null)
+      throw new AiGatewayError(kind, friendlyMessage(kind, res.status), res.status, detail)
+    }
+    const body = await res.text()
+    try {
+      raw = JSON.parse(body)
+    } catch {
+      throw new AiGatewayError('unknown', '9Router returned an invalid JSON response. Check NINE_ROUTER_BASE_URL.', res.status)
+    }
   } catch (err) {
+    if (err instanceof AiGatewayError) throw err
     const name = err instanceof Error ? err.name : ''
     if (name === 'TimeoutError' || name === 'AbortError') {
       throw new AiGatewayError('timeout', friendlyMessage('timeout'), undefined, err)
@@ -110,18 +123,14 @@ export async function sendChatCompletion(
     throw new AiGatewayError('network', friendlyMessage('network'), undefined, err)
   }
 
-  const raw: unknown = await res.json().catch(() => null)
-
-  if (!res.ok) {
-    const kind = classifyHttpStatus(res.status)
-    throw new AiGatewayError(kind, friendlyMessage(kind, res.status), res.status, raw)
-  }
-
   const content = (raw as { choices?: Array<{ message?: { content?: unknown } }> })?.choices?.[0]?.message
     ?.content
-  if (typeof content !== 'string') {
-    throw new AiGatewayError('unknown', friendlyMessage('unknown', res.status), res.status, raw)
+  const text = Array.isArray(content)
+    ? content.filter(part => part?.type === 'text' && typeof part.text === 'string').map(part => part.text).join('')
+    : content
+  if (typeof text !== 'string' || !text.trim()) {
+    throw new AiGatewayError('unknown', '9Router returned no assistant text. Try preparing karaoke again.', res.status, raw)
   }
 
-  return { content, raw }
+  return { content: text, raw }
 }

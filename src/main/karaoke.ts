@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import type { KaraokeTrack } from '../shared/types'
+import type { KaraokeActivity, KaraokeTrack } from '../shared/types'
 import { parseLrc } from '../renderer/src/lib/lrc'
 import timingSkill from '../../.agents/skills/karaoke-timing/SKILL.md?raw'
 import { getAiGateway } from './ai-gateway'
@@ -94,20 +94,26 @@ async function vocalSilences(videoId: string, duration: number): Promise<number[
   return quiet
 }
 
-const pending = new Map<string, Promise<KaraokeTrack>>()
+type Report = (activity: KaraokeActivity) => void
+const pending = new Map<string, { result: Promise<KaraokeTrack>; history: KaraokeActivity[]; listeners: Set<Report> }>()
 
-async function generate(videoId: string, src: Source): Promise<KaraokeTrack> {
+async function generate(videoId: string, src: Source, report: Report): Promise<KaraokeTrack> {
   const gateway = getAiGateway()
   if (!gateway) throw new Error('Enable and configure 9Router to prepare karaoke.')
   const anchors = karaokeAnchors(parseLrc(src.lyrics), src.duration)
+  report({ phase: 'analyzing' })
   const inputs = timingInput(anchors, src.duration, await vocalSilences(videoId, src.duration))
   const lines: KaraokeTrack['lines'] = []
   for (let i = 0; i < inputs.length; i += 16) {
     const batch = inputs.slice(i, i + 16)
+    const position = { batch: i / 16 + 1, total: Math.ceil(inputs.length / 16) }
+    const text = JSON.stringify(batch)
+    report({ phase: 'request', ...position, text })
     const reply = await gateway.sendChat([
       { role: 'system', content: timingSkill },
-      { role: 'user', content: JSON.stringify(batch) }
+      { role: 'user', content: text }
     ])
+    report({ phase: 'response', ...position, text: reply })
     lines.push(...decodeTiming(reply, batch, anchors))
   }
   if (source(videoId)?.sourceHash !== src.sourceHash) {
@@ -116,15 +122,27 @@ async function generate(videoId: string, src: Source): Promise<KaraokeTrack> {
   return readCache(src) ?? writeCache(src, { lines })
 }
 
-export async function prepareKaraoke(videoId: string): Promise<KaraokeTrack> {
+export async function prepareKaraoke(videoId: string, report: Report): Promise<KaraokeTrack> {
   const src = source(videoId)
   if (!src) throw new Error('Choose synchronized lyrics for this song first.')
   const cached = readCache(src)
-  if (cached) return cached
+  if (cached) {
+    report({ phase: 'cached' })
+    return cached
+  }
   const key = videoId + ':' + src.sourceHash
   const active = pending.get(key)
-  if (active) return active
-  const generation = generate(videoId, src).finally(() => pending.delete(key))
-  pending.set(key, generation)
+  if (active) {
+    active.history.forEach(report)
+    active.listeners.add(report)
+    return active.result
+  }
+  const history: KaraokeActivity[] = []
+  const listeners = new Set([report])
+  const generation = generate(videoId, src, activity => {
+    history.push(activity)
+    for (const listener of listeners) listener(activity)
+  }).finally(() => pending.delete(key))
+  pending.set(key, { result: generation, history, listeners })
   return generation
 }

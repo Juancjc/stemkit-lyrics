@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import type { KaraokeStyle, KaraokeTrack } from '../../../shared/types'
+import { useEffect, useRef, useState } from 'react'
+import type { KaraokeActivity, KaraokeStyle, KaraokeTrack } from '../../../shared/types'
 import { useKaraokeCue } from '../lib/karaoke-position'
 import { karaokeColor, karaokeHighlighted } from '../lib/karaoke-style'
 import { useTranslate } from '../lib/i18n'
@@ -9,6 +9,8 @@ import { DownloadIcon, MicIcon } from './Icons'
 type Line = KaraokeTrack['lines'][number]
 
 interface Props {
+  visualizer: boolean
+  onVisualizerChange: (enabled: boolean) => void
   videoId: string
   getPosition: () => number
   onSing: (track: KaraokeTrack) => void
@@ -100,13 +102,17 @@ function LineEditor({ line, index, busy, onSave, onCancel }: {
   )
 }
 
-export function Karaoke({ videoId, getPosition, onSing, onDownload, onChooseLyrics, ready, style }: Props): React.ReactElement {
+export function Karaoke({ videoId, getPosition, onSing, onDownload, onChooseLyrics, ready, style, visualizer, onVisualizerChange }: Props): React.ReactElement {
   const t = useTranslate()
   const [track, setTrack] = useState<KaraokeTrack | null>(null)
   const [busy, setBusy] = useState<'loading' | 'preparing' | 'saving' | 'exporting' | null>('loading')
   const [instrumental, setInstrumental] = useState(true)
   const [editing, setEditing] = useState<number | null>(null)
   const [error, setError] = useState('')
+  const dialog = useRef<HTMLDialogElement>(null)
+  const [activity, setActivity] = useState<KaraokeActivity[]>([])
+  const [session, setSession] = useState<'pending' | 'done' | 'failed' | null>(null)
+  const [sessionError, setSessionError] = useState('')
 
   useEffect(() => {
     let current = true
@@ -118,13 +124,28 @@ export function Karaoke({ videoId, getPosition, onSing, onDownload, onChooseLyri
   }, [videoId])
 
   async function prepare(): Promise<void> {
+    dialog.current?.showModal()
+    setSession('pending')
+    setSessionError('')
+    setActivity([])
     setBusy('preparing')
     setError('')
+    let unsubscribe: (() => void) | undefined
     try {
+      if (typeof window.stemkit.onKaraokeActivity !== 'function') {
+        throw new Error('Restart StemKit to load the updated karaoke integration.')
+      }
+      unsubscribe = window.stemkit.onKaraokeActivity(event => {
+        if (event.videoId === videoId) setActivity(previous => [...previous, event.activity])
+      })
       setTrack(await window.stemkit.prepareKaraoke(videoId))
+      setSession('done')
     } catch (err) {
       setError(errorMessage(err))
+      setSessionError(errorMessage(err))
+      setSession('failed')
     } finally {
+      unsubscribe?.()
       setBusy(null)
     }
   }
@@ -159,12 +180,16 @@ export function Karaoke({ videoId, getPosition, onSing, onDownload, onChooseLyri
   }
 
   return (
-    <section aria-label={t('Karaoke')} className="glass space-y-4 rounded-2xl p-5">
+    <section aria-label={t('Karaoke')} className="glass mt-4 space-y-4 rounded-2xl p-5">
       <h3 className="text-lg font-semibold">{t('Karaoke')}</h3>
       {busy === 'loading' ? <p role="status" className="text-sm text-white/70">{t('Loading saved karaoke…')}</p> : track ? (
         <>
           <KaraokePreview track={track} getPosition={getPosition} style={style} />
-          <div className="flex flex-wrap items-center gap-2">
+          <label className="no-drag flex w-fit cursor-pointer items-center gap-2 text-sm">
+            <input type="checkbox" checked={visualizer} onChange={event => onVisualizerChange(event.target.checked)} />
+            {t('Audio-reactive background')}
+          </label>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
             <button disabled={!ready || !!busy || editing !== null} onClick={() => onSing(track)} className={button + ' bg-yellow-300 text-black hover:bg-yellow-200'}>
               <MicIcon className="h-4 w-4" /> {t('Time to sing')}
             </button>
@@ -212,6 +237,30 @@ export function Karaoke({ videoId, getPosition, onSing, onDownload, onChooseLyri
           </div>
         </>
       )}
+      {session && <button className={secondary} onClick={() => dialog.current?.showModal()}>{t('View 9Router activity')}</button>}
+      <dialog ref={dialog} aria-label={t('9Router activity')}
+        className="no-drag fixed inset-0 m-auto max-h-[85vh] w-[min(38rem,92vw)] overflow-y-auto rounded-2xl border border-white/15 bg-zinc-900 p-5 text-white shadow-2xl backdrop:bg-black/70">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-lg font-semibold">{t('9Router activity')}</h3>
+          <button className={secondary} onClick={() => dialog.current?.close()}>{t('Close')}</button>
+        </div>
+        <p role="status" className="my-4 text-sm text-violet-200">
+          {session === 'failed' ? translatedError(sessionError, t)
+            : session === 'done' ? t(activity.at(-1)?.phase === 'cached' ? 'Loaded saved karaoke.' : 'Karaoke timings saved.')
+            : t(activity.at(-1)?.phase === 'request' ? 'Waiting for 9Router to reply…'
+              : activity.at(-1)?.phase === 'response' ? 'Checking word timings…'
+              : activity.at(-1)?.phase === 'analyzing' ? 'Analyzing vocal pauses…' : 'Loading synchronized lyrics…')}
+        </p>
+        <div className="space-y-2">
+          {activity.map((item, i) => 'text' in item && (
+            <details key={i} className="rounded-lg border border-white/10 bg-black/25 p-3">
+              <summary className="cursor-pointer text-sm">{t(item.phase === 'request'
+                ? 'Request · batch {batch} of {total}' : 'Reply · batch {batch} of {total}', { batch: item.batch, total: item.total })}</summary>
+              <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all text-xs text-white/75">{item.text}</pre>
+            </details>
+          ))}
+        </div>
+      </dialog>
       {error && <p role="alert" className="break-words text-sm text-rose-200">{translatedError(error, t)}</p>}
     </section>
   )

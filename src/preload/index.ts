@@ -21,6 +21,7 @@ const api: StemKitApi = {
   setStemPan: (videoId, pans) => ipcRenderer.invoke('song:pan:set', videoId, pans),
   getKaraoke: (id) => ipcRenderer.invoke('karaoke:get', id),
   prepareKaraoke: (id) => ipcRenderer.invoke('karaoke:prepare', id),
+  onKaraokeActivity: (cb) => subscribe('karaoke:activity', cb),
   saveKaraoke: (id, track) => ipcRenderer.invoke('karaoke:save', id, track),
   exportLyricVideo: (id, frames, mix) => ipcRenderer.invoke('lyrics:export-video', id, frames, mix),
   exportStem: (videoId, stem) => ipcRenderer.invoke('stem:export', videoId, stem),

@@ -27,7 +27,7 @@ Tudo roda localmente — sem contas, sem chaves de API. Suas músicas, buscas e 
 
 ## Download
 
-Pegue os instaladores em [Releases](https://github.com/danvelope/stemkit/releases):
+Pegue os instaladores em [Releases](https://github.com/Juancjc/stemkit-lyrics/releases):
 - **macOS**: `StemKit-x.y.z-mac-arm64.dmg` (Apple Silicon) ou `StemKit-x.y.z-mac-x64.dmg` (Intel)
 - **Windows**: `StemKit-Setup-x.y.z.exe` (instalador) ou `.zip` portátil
 - **Linux** (x64): `StemKit-x.y.z-linux-x86_64.AppImage` (portátil, com auto-atualização) ou `StemKit-x.y.z-linux-amd64.deb`

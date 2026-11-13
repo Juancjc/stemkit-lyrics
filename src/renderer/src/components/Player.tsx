@@ -97,6 +97,7 @@ export function Player({ song, settings = DEFAULT_SETTINGS }: Props): React.Reac
   const [master, setMaster] = useState(0.9)
   const [preset, setPreset] = useState<PresetId | 'custom'>('all')
   const [showKaraoke, setShowKaraoke] = useState(false)
+  const [visualizer, setVisualizer] = useState(false)
   const [lyricsRevision, setLyricsRevision] = useState(0)
   const [showLyrics, setShowLyrics] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -601,6 +602,8 @@ export function Player({ song, settings = DEFAULT_SETTINGS }: Props): React.Reac
           {showKaraoke && (
             <Karaoke
               key={lyricsRevision}
+              visualizer={visualizer}
+              onVisualizerChange={setVisualizer}
               style={settings}
               videoId={song.videoId}
               getPosition={getPosition}
@@ -663,6 +666,15 @@ export function Player({ song, settings = DEFAULT_SETTINGS }: Props): React.Reac
           videoId={song.videoId}
           getPosition={getPosition}
           karaoke={singingTrack}
+          visualizer={visualizer}
+          onVisualizerChange={setVisualizer}
+          playing={playing}
+          playbackReady={!decoding && !decodeError && stemMeta.length > 0}
+          onTogglePlay={togglePlay}
+          onRestart={() => {
+            seekTo(0)
+            if (!playingRef.current) togglePlay()
+          }}
           karaokeStyle={settings}
           onClose={() => { setTheaterOpen(false); setSingingTrack(null) }}
           showVideo={showVideo}

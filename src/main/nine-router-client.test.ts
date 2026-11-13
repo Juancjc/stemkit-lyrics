@@ -116,3 +116,29 @@ test('sendChatCompletion raises an unknown error on a malformed success body', a
     await close()
   }
 })
+
+test('sendChatCompletion combines text parts in order', async () => {
+  const { url, close } = await startServer((_req, res) => {
+    const content = [{ type: 'text', text: '[1,' }, { type: 'text', text: '2]' }]
+    res.end(JSON.stringify({ choices: [{ message: { content } }] }))
+  })
+  try {
+    assert.equal((await sendChatCompletion(testConfig(url), [])).content, '[1,2]')
+  } finally {
+    await close()
+  }
+})
+
+test('sendChatCompletion reports a timeout while reading a 200 response', async () => {
+  const { url, close } = await startServer((_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.write('{')
+    setTimeout(() => res.end('}'), 500)
+  })
+  try {
+    await assert.rejects(sendChatCompletion(testConfig(url, { timeoutMs: 100 }), []),
+      (err: unknown) => err instanceof AiGatewayError && err.kind === 'timeout')
+  } finally {
+    await close()
+  }
+})
