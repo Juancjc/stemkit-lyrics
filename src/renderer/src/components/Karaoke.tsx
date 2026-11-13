@@ -8,7 +8,9 @@ import { DownloadIcon, MicIcon } from './Icons'
 
 type Line = KaraokeTrack['lines'][number]
 
-interface Props {
+import { BackgroundStyleSelect, type BackgroundStyleProps } from './BackgroundStyleSelect'
+
+interface Props extends BackgroundStyleProps {
   visualizer: boolean
   onVisualizerChange: (enabled: boolean) => void
   videoId: string
@@ -102,7 +104,7 @@ function LineEditor({ line, index, busy, onSave, onCancel }: {
   )
 }
 
-export function Karaoke({ videoId, getPosition, onSing, onDownload, onChooseLyrics, ready, style, visualizer, onVisualizerChange }: Props): React.ReactElement {
+export function Karaoke({ videoId, getPosition, onSing, onDownload, onChooseLyrics, ready, style, visualizer, onVisualizerChange, backgroundStyle, onBackgroundStyleChange }: Props): React.ReactElement {
   const t = useTranslate()
   const [track, setTrack] = useState<KaraokeTrack | null>(null)
   const [busy, setBusy] = useState<'loading' | 'preparing' | 'saving' | 'exporting' | null>('loading')
@@ -189,6 +191,7 @@ export function Karaoke({ videoId, getPosition, onSing, onDownload, onChooseLyri
             <input type="checkbox" checked={visualizer} onChange={event => onVisualizerChange(event.target.checked)} />
             {t('Audio-reactive background')}
           </label>
+          {visualizer && <BackgroundStyleSelect {...{ backgroundStyle, onBackgroundStyleChange }} />}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
             <button disabled={!ready || !!busy || editing !== null} onClick={() => onSing(track)} className={button + ' bg-yellow-300 text-black hover:bg-yellow-200'}>
               <MicIcon className="h-4 w-4" /> {t('Time to sing')}

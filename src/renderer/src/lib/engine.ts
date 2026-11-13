@@ -93,6 +93,11 @@ export class StemEngine {
     }
   }
 
+  mixOutput(): AudioNode {
+    this.ensureCtx()
+    return this.master!
+  }
+
   async decode(payload: Record<string, Uint8Array>): Promise<void> {
     const buffers = await decodePayload(payload)
     this.buffers = buffers

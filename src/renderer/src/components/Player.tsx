@@ -12,6 +12,7 @@ import { Transport, type PresetId } from './Transport'
 import { DownloadIcon, MicIcon } from './Icons'
 import { parseLrc } from '../lib/lrc'
 import { Karaoke } from './Karaoke'
+import type { BackgroundStyle } from './BackgroundStyleSelect'
 import { karaokeFrames, lyricFrames } from '../lib/lyric-frames'
 import { Lyrics } from './Lyrics'
 import { TheaterMode } from './TheaterMode'
@@ -98,6 +99,7 @@ export function Player({ song, settings = DEFAULT_SETTINGS }: Props): React.Reac
   const [preset, setPreset] = useState<PresetId | 'custom'>('all')
   const [showKaraoke, setShowKaraoke] = useState(false)
   const [visualizer, setVisualizer] = useState(false)
+  const [backgroundStyle, setBackgroundStyle] = useState<BackgroundStyle>('aurora')
   const [lyricsRevision, setLyricsRevision] = useState(0)
   const [showLyrics, setShowLyrics] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -603,6 +605,8 @@ export function Player({ song, settings = DEFAULT_SETTINGS }: Props): React.Reac
             <Karaoke
               key={lyricsRevision}
               visualizer={visualizer}
+              backgroundStyle={backgroundStyle}
+              onBackgroundStyleChange={setBackgroundStyle}
               onVisualizerChange={setVisualizer}
               style={settings}
               videoId={song.videoId}
@@ -667,6 +671,8 @@ export function Player({ song, settings = DEFAULT_SETTINGS }: Props): React.Reac
           getPosition={getPosition}
           karaoke={singingTrack}
           visualizer={visualizer}
+          backgroundStyle={backgroundStyle}
+          onBackgroundStyleChange={setBackgroundStyle}
           onVisualizerChange={setVisualizer}
           playing={playing}
           playbackReady={!decoding && !decodeError && stemMeta.length > 0}

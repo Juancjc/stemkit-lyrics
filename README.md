@@ -33,7 +33,7 @@ Play the song to preview the highlights. If a word comes in early or late, expan
 
 ![Karaoke studio showing a highlighted word, instrumental export and four editable lyric lines](docs/karaoke-studio.png)
 
-Select **Time to sing** to mute the vocals and open the lyrics in theater mode. Turn on **Audio-reactive background** for a ring of colored bars that responds to the frequencies in your live mix. You can toggle the effect while singing, pause or resume playback, restart the song, or leave with **Close** or **Esc**.
+Select **Time to sing** to mute the vocals and open the lyrics in theater mode. Turn on **Audio-reactive background** for a Butterchurn MilkDrop visualization driven by your live mix. On devices without WebGL 2, the spectrum ring below follows the same audio. You can toggle the effect while singing, pause or resume playback, restart the song, or leave with **Close** or **Esc**.
 
 ![Live karaoke with the audio-reactive spectrum around the lyrics and visible Pause, Restart song and Close controls](docs/karaoke-visualizer.png)
 

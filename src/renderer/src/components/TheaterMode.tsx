@@ -9,7 +9,9 @@ import { useKaraokeCue } from '../lib/karaoke-position'
 import { PauseIcon, PlayIcon, XIcon } from './Icons'
 import type { KaraokeStyle, KaraokeTrack, SongBackground } from '../../../shared/types'
 
-interface Props {
+import { BackgroundStyleSelect, type BackgroundStyleProps } from './BackgroundStyleSelect'
+
+interface Props extends BackgroundStyleProps {
   visualizer: boolean
   onVisualizerChange: (enabled: boolean) => void
   videoId: string
@@ -25,7 +27,7 @@ interface Props {
 }
 
 export function TheaterMode({ videoId, getPosition, onClose, showVideo, karaoke, karaokeStyle,
-  playing, playbackReady, onTogglePlay, onRestart, visualizer, onVisualizerChange }: Props): React.ReactElement {
+  playing, playbackReady, onTogglePlay, onRestart, visualizer, onVisualizerChange, backgroundStyle, onBackgroundStyleChange }: Props): React.ReactElement {
   const t = useTranslate()
   const [lines, setLines] = useState<LrcLine[]>([])
   const [activeIndex, setActiveIndex] = useState(-1)
@@ -36,6 +38,30 @@ export function TheaterMode({ videoId, getPosition, onClose, showVideo, karaoke,
   const [background, setBackground] = useState<SongBackground | null>(null)
   const [bgFailed, setBgFailed] = useState(false)
   const reactive = Boolean(karaoke && visualizer)
+  const [failedStyle, setFailedStyle] = useState<BackgroundStyleProps['backgroundStyle'] | null>(null)
+  const milkDrop = reactive && backgroundStyle !== 'aurora' && backgroundStyle !== 'equalizer' && backgroundStyle !== failedStyle
+  const milkDropCanvas = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    const canvas = milkDropCanvas.current
+    if (!milkDrop || !canvas) return
+    let active = true
+    let initialized = false
+    let stop: (() => void) | undefined
+    const fallback = (): void => { if (active) setFailedStyle(backgroundStyle) }
+    canvas.addEventListener('webglcontextlost', fallback)
+    void import('../lib/milkdrop').then(module => {
+      if (active) {
+        initialized = true
+        stop = module.startMilkDrop(canvas, backgroundStyle, fallback)
+      }
+    }).catch(fallback)
+    return () => {
+      active = false
+      canvas.removeEventListener('webglcontextlost', fallback)
+      stop?.()
+      if (initialized) canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext()
+    }
+  }, [milkDrop, backgroundStyle])
   const customBackground = Boolean(background && !bgFailed && !reactive)
 
   // Theater Mode fetches and parses its own copy of the cached synced
@@ -140,14 +166,24 @@ export function TheaterMode({ videoId, getPosition, onClose, showVideo, karaoke,
           const angle = t * 0.15 + (i * (Math.PI * 2)) / colors.length
           const cx = w / 2 + Math.cos(angle) * w * 0.3
           const cy = h / 2 + Math.sin(angle * 1.3) * h * 0.3
-          const radius = Math.max(w, h) * 0.5
+          const energy = backgroundStyle === 'aurora' && bins ? bins[4 + i * 24] / 255 : 0
+          const radius = Math.max(w, h) * (0.5 + 0.32 * energy)
           const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius)
           grad.addColorStop(0, `${color}aa`)
           grad.addColorStop(1, `${color}00`)
           ctx.fillStyle = grad
           ctx.fillRect(0, 0, w, h)
         })
-        if (bins) {
+        if (bins && backgroundStyle === 'equalizer') {
+          const columns = 64
+          const step = w / columns
+          for (let i = 0; i < columns; i++) {
+            const bin = Math.round(2 * Math.pow(bins.length / 4, i / (columns - 1)))
+            const height = 2 + h * 0.3 * bins[bin] / 255
+            ctx.fillStyle = `hsl(${170 + 130 * i / columns} 80% 62%)`
+            ctx.fillRect(i * step, h - height, step * 0.72, height)
+          }
+        } else if (bins && backgroundStyle !== 'aurora') {
           // Mirror the spectrum around a ring, with logarithmic spacing for the bass.
           const size = Math.min(w, h)
           const ring = size * 0.31
@@ -176,13 +212,15 @@ export function TheaterMode({ videoId, getPosition, onClose, showVideo, karaoke,
       cancelAnimationFrame(raf)
       spectrum?.disconnect()
     }
-  }, [showVideo, customBackground, reactive])
+  }, [showVideo, customBackground, reactive, milkDrop, backgroundStyle])
 
   const text = activeIndex >= 0 ? (lines[activeIndex]?.text ?? '') : ''
 
   return (
     <div className="fixed inset-0 z-[60]">
-      {background && customBackground ? (
+      {milkDrop ? (
+        <canvas key={backgroundStyle} aria-hidden="true" ref={milkDropCanvas} className="absolute inset-0 w-full h-full" />
+      ) : background && customBackground ? (
         background.kind === 'video' ? (
           <video
             key={background.path}
@@ -223,6 +261,7 @@ export function TheaterMode({ videoId, getPosition, onClose, showVideo, karaoke,
           <input type="checkbox" checked={visualizer} onChange={event => onVisualizerChange(event.target.checked)} />
           {t('Audio-reactive background')}
         </label>}
+        {reactive && <BackgroundStyleSelect {...{ backgroundStyle, onBackgroundStyleChange }} />}
         <button onClick={onTogglePlay} disabled={!playbackReady}
           className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white px-5 font-semibold text-zinc-900 hover:bg-violet-100 disabled:opacity-50">
           {playing ? <PauseIcon /> : <PlayIcon />}

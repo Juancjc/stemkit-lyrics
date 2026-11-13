@@ -1,4 +1,6 @@
 export const karaokePt: Record<string, string> = {
+  'Background style': 'Estilo de fundo',
+  'Equalizer bars': 'Barras de equalizador',
   'Audio-reactive background': 'Fundo que reage à música',
   'View 9Router activity': 'Ver atividade do 9Router',
   'Restart StemKit to load the updated karaoke integration.': 'Reinicie o StemKit para carregar a integração atualizada do karaokê.',
